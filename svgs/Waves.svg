@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="80.208427mm"
+   height="158.74998mm"
+   viewBox="0 0 80.208427 158.74998"
+   version="1.1"
+   id="svg1"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.7198092"
+     inkscape:cx="397.32751"
+     inkscape:cy="561.25984"
+     inkscape:window-width="2560"
+     inkscape:window-height="1012"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1">
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern38"
+       preserveAspectRatio="xMidYMid"
+       id="pattern39"
+       patternTransform="matrix(0.31,0,0,0.34489069,121.1144,688.96882)"
+       x="0"
+       y="0" />
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="119.83557"
+       height="20.005892"
+       patternTransform="translate(101.05,679.9941)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern38"
+       inkscape:label="pattern38">
+      <path
+         style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:3.77953"
+         d="M 30.309521,0.23712198 C 20.276739,-0.72061032 10.622476,1.1678685 0,6.9067032 V 11.822962 C 11.088654,5.5280071 20.651275,4.0643472 29.81147,4.9448638 38.967678,5.8253803 47.729428,9.1196166 56.829858,12.429311 75.026726,19.044807 94.885102,25.783894 119.83557,11.822962 L 119.8197,6.9067032 C 94.160003,21.230659 76.724158,14.561078 58.5751,7.9610402 49.498516,4.6629488 40.342304,1.2026401 30.309521,0.23712198 Z"
+         id="path38" />
+    </pattern>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-46.800545,-50.185917)">
+    <rect
+       style="fill:url(#pattern39);stroke:none;stroke-width:0.264584"
+       width="80.208427"
+       height="158.74998"
+       x="46.800545"
+       y="50.185917"
+       id="rect38" />
+  </g>
+</svg>
