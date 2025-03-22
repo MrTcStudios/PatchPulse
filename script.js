@@ -106,6 +106,125 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
+  // Storage Information Update
+  function updateStorageInfo() {
+    const usedStorage = 650;
+    const totalStorage = 1000;
+    const percentage = (usedStorage / totalStorage) * 100;
+
+    const storageBar = document.getElementById("storageBar");
+    if (storageBar) {
+      storageBar.style.width = `${percentage}%`;
+
+      if (percentage > 90) {
+        storageBar.style.backgroundColor = "#ff4444";
+      } else if (percentage > 70) {
+        storageBar.style.backgroundColor = "#ffaa00";
+      } else {
+        storageBar.style.backgroundColor = "white";
+      }
+    }
+
+    const usedElement = document.getElementById("usedStorage");
+    const totalElement = document.getElementById("totalStorage");
+
+    if (usedElement && totalElement) {
+      if (
+        usedElement.textContent !== usedStorage.toString() ||
+        totalElement.textContent !== totalStorage.toString()
+      ) {
+        usedElement.classList.add("updating");
+        totalElement.classList.add("updating");
+
+        usedElement.textContent = usedStorage;
+        totalElement.textContent = totalStorage;
+
+        setTimeout(() => {
+          usedElement.classList.remove("updating");
+          totalElement.classList.remove("updating");
+        }, 300);
+      }
+    }
+  }
+
+  // Terms and Conditions overlay functionality
+  const termsLink = document.getElementById("termsLink");
+  const overlay = document.getElementById("termsOverlay");
+  const closeButton = document.getElementById("closeOverlay");
+
+  if (termsLink && overlay && closeButton) {
+    termsLink.addEventListener("click", function (e) {
+      e.preventDefault();
+      overlay.style.display = "flex";
+    });
+
+    closeButton.addEventListener("click", function () {
+      overlay.style.display = "none";
+    });
+
+    overlay.addEventListener("click", function (e) {
+      if (e.target === overlay) {
+        overlay.style.display = "none";
+      }
+    });
+  }
+
+  // Password toggle functionality
+  const togglePassword = document.getElementById("togglePassword");
+  const passwordField = document.getElementById("passwordField");
+
+  if (togglePassword && passwordField) {
+    togglePassword.addEventListener("click", function () {
+      const type =
+        passwordField.getAttribute("type") === "password" ? "text" : "password";
+      passwordField.setAttribute("type", type);
+      this.textContent = type === "password" ? "👁" : "👁‍🗨";
+    });
+  }
+
+  // Warning and Delete button handlers
+  const clearLogsButton = document.querySelector(".action-button.warning");
+  const deleteLogsButton = document.querySelector(".action-button.delete");
+  const deleteAccountButton = document.querySelectorAll(
+    ".action-button.delete",
+  )[1];
+
+  if (clearLogsButton) {
+    clearLogsButton.addEventListener("click", function () {
+      if (
+        confirm(
+          "Are you sure you want to clear all logs? This action cannot be undone.",
+        )
+      ) {
+        console.log("Clearing logs...");
+      }
+    });
+  }
+
+  if (deleteLogsButton) {
+    deleteLogsButton.addEventListener("click", function () {
+      if (
+        confirm(
+          "Are you sure you want to delete all logs? This action cannot be undone.",
+        )
+      ) {
+        console.log("Deleting logs...");
+      }
+    });
+  }
+
+  if (deleteAccountButton) {
+    deleteAccountButton.addEventListener("click", function () {
+      if (
+        confirm(
+          "WARNING: Are you sure you want to delete your account? This action cannot be undone and you will lose all data.",
+        )
+      ) {
+        console.log("Deleting account...");
+      }
+    });
+  }
+
   // Form Submissions
   const settingsForm = document.querySelector(".settings-form");
   if (settingsForm) {
@@ -127,6 +246,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Initialize functions
+  updateStorageInfo();
   animateLogEntries();
-});
 
+  // Update storage info periodically
+  setInterval(updateStorageInfo, 30000);
+});

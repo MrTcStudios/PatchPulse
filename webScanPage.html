@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="style.css" />
+        <link rel="stylesheet" type="text/css" href="cssfx.css" />
+        <title>PatchPulse - Account</title>
+        <meta charset="UTF-8" />
+    </head>
+    <body>
+        <section class="layout">
+            <div class="header">
+                <img
+                    class="headerIcon"
+                    src="PatchPulseLogo.svg"
+                    alt="CentredLogo"
+                />
+                <span
+                    ><a href="homePage.html" class="headerButton">Home</a></span
+                >
+                <span
+                    ><a href="toolPage.html" class="headerButton">Tool</a></span
+                >
+                <span
+                    ><a href="accountPage.html" class="headerButton"
+                        >Account</a
+                    ></span
+                >
+                <button class="inout-button">Log In / Log Out</button>
+            </div>
+
+            <!-- Single scan form section -->
+            <div class="scan-form-container">
+                <form class="scan-form">
+                    <input
+                        type="url"
+                        class="scan-input"
+                        placeholder="Enter URL to scan (example: https://example.com)"
+                        required
+                    />
+                    <div class="error-message"></div>
+                    <hr class="scan-line" />
+                    <button type="submit" class="scan-button">SCAN NOW</button>
+                </form>
+            </div>
+
+            <!-- Results container -->
+            <div class="scan-results-container">
+                <div class="scan-results-box">
+                    <div class="scan-log">
+                        <span class="timestamp">[12:45:32]</span>
+                        <span class="log-message">Initiating scan...</span>
+                    </div>
+                    <div class="scan-log">
+                        <span class="timestamp">[12:45:33]</span>
+                        <span class="log-message"
+                            >Checking URL validity...</span
+                        >
+                    </div>
+                    <div class="scan-log">
+                        <span class="timestamp">[12:45:34]</span>
+                        <span class="log-message"
+                            >Analyzing website structure...</span
+                        >
+                    </div>
+                    <div class="scan-log">
+                        <span class="timestamp">[12:45:35]</span>
+                        <span class="log-message"
+                            >Scanning for vulnerabilities...</span
+                        >
+                    </div>
+                    <div class="scan-log">
+                        <span class="timestamp">[12:45:35]</span>
+                        <span class="log-message"
+                            >Scanning for vulnerabilities...</span
+                        >
+                    </div>
+                    <div class="scan-log">
+                        <span class="timestamp">[12:45:35]</span>
+                        <span class="log-message"
+                            >Scanning for vulnerabilities...</span
+                        >
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <hr class="sectionLine" />
+        <!-- Footer section remains the same -->
+        <div class="fot1">
+            <ul>
+                <li>
+                    <img class="arrowsFot" src="arrow1.png" alt="" />
+                    <a href="" class="faqButton">Github</a>
+                </li>
+                <li>
+                    <img class="arrowsFot" src="arrow1.png" alt="" />
+                    <a href="" class="faqButton">Contact Us</a>
+                </li>
+                <li>
+                    <img class="arrowsFot" src="arrow1.png" alt="" />
+                    <a href="" class="faqButton">Our Organization</a>
+                </li>
+            </ul>
+        </div>
+        <hr class="sectionLine" />
+        <script>
+            document
+                .querySelector(".scan-form")
+                .addEventListener("submit", function (e) {
+                    e.preventDefault();
+
+                    const urlInput = this.querySelector(".scan-input");
+                    const errorMessage = this.querySelector(".error-message");
+
+                    // Try to create a URL object (this will validate the URL)
+                    try {
+                        const url = new URL(urlInput.value);
+
+                        // Check if it's http or https
+                        if (
+                            url.protocol !== "http:" &&
+                            url.protocol !== "https:"
+                        ) {
+                            throw new Error(
+                                "URL must start with http:// or https://",
+                            );
+                        }
+
+                        // Valid URL - clear any error message and show results
+                        errorMessage.textContent = "";
+                        errorMessage.classList.remove("active");
+                        document
+                            .querySelector(".scan-results-container")
+                            .classList.add("active");
+                    } catch (err) {
+                        // Invalid URL - show error message
+                        errorMessage.textContent =
+                            "Please enter a valid URL (e.g., https://example.com)";
+                        errorMessage.classList.add("active");
+                        document
+                            .querySelector(".scan-results-container")
+                            .classList.remove("active");
+                    }
+                });
+
+            // Optional: Add input validation as user types
+            document
+                .querySelector(".scan-input")
+                .addEventListener("input", function () {
+                    const errorMessage =
+                        document.querySelector(".error-message");
+
+                    if (this.value.length > 0) {
+                        try {
+                            const url = new URL(this.value);
+                            if (
+                                url.protocol === "http:" ||
+                                url.protocol === "https:"
+                            ) {
+                                errorMessage.textContent = "";
+                                errorMessage.classList.remove("active");
+                                return;
+                            }
+                        } catch (err) {
+                            // Don't show error while typing unless there's a wrong protocol
+                            if (
+                                this.value.startsWith("http:") ||
+                                this.value.startsWith("https:")
+                            ) {
+                                errorMessage.textContent = "Invalid URL format";
+                                errorMessage.classList.add("active");
+                            }
+                        }
+                    } else {
+                        errorMessage.textContent = "";
+                        errorMessage.classList.remove("active");
+                    }
+                });
+        </script>
+    </body>
+</html>

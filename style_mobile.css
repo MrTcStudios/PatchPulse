@@ -1,0 +1,1432 @@
+/* style_mobile.css */
+@font-face {
+    font-family: "SansSerif";
+    src: url("SansSerifBldFLF.otf") format("woff2");
+}
+
+@font-face {
+    font-family: "URWGoth";
+    src: url("urw-gothic/fonts/URWGothic-Demi.otf") format("woff2");
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    background-color: black;
+    color: white;
+    font-family: SansSerif;
+    overflow-x: hidden;
+}
+
+.layout {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Mobile Menu Styles */
+.menu-button {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    width: 30px;
+    height: 25px;
+    cursor: pointer;
+}
+
+.menu-button span {
+    display: block;
+    width: 100%;
+    height: 3px;
+    background: white;
+    margin: 5px 0;
+    transition: 0.3s;
+}
+
+.mobile-nav {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 80%;
+    height: 100vh;
+    background: black;
+    border-left: 1px solid white;
+    z-index: 999;
+    transition: 0.3s;
+    padding: 20px;
+}
+
+.mobile-nav.active {
+    right: 0;
+}
+
+.nav-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.nav-logo {
+    height: 40px;
+}
+
+.close-nav {
+    font-size: 30px;
+    cursor: pointer;
+}
+
+.mobile-nav a {
+    display: block;
+    color: white;
+    text-decoration: none;
+    padding: 15px 0;
+    font-size: 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mobile-dropdown .dropdown-header {
+    padding: 15px 0;
+    font-size: 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+}
+
+.dropdown-items {
+    display: none;
+    padding-left: 20px;
+}
+
+.dropdown-items.active {
+    display: block;
+}
+
+/* Header Styles */
+.header {
+    padding: 20px;
+    text-align: center;
+}
+
+.headerIcon {
+    height: 60px;
+    width: auto;
+}
+
+/* Main Content Styles */
+.main-container {
+    padding: 20px;
+    text-align: center;
+}
+
+.mainLogo {
+    width: 90%;
+    max-width: 300px;
+    height: auto;
+    margin: 20px 5%;
+}
+
+.scansZone {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 20px;
+}
+
+.scans-button {
+    background: black;
+    color: white;
+    border: 2px solid white;
+    padding: 15px;
+    font-size: 18px;
+    width: 100%;
+    font-family: SansSerif;
+    box-shadow: 5px 5px 0px 0px rgba(255, 255, 255);
+    transition: all 0.3s ease;
+}
+
+/* FAQ Styles */
+.faqZone {
+    padding: 20px;
+}
+
+.faqText {
+    font-family: SansSerif;
+    font-size: 40px;
+    margin: 20px 0;
+}
+
+.faq-container {
+    margin-top: 20px;
+}
+
+.faq-item {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    margin-bottom: 10px;
+}
+
+.faq-question {
+    padding: 15px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.arrow {
+    transition: transform 0.3s ease;
+}
+
+.faq-answer {
+    display: none;
+    padding: 0 0 15px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.faq-item.active .arrow {
+    transform: rotate(180deg);
+}
+
+.faq-item.active .faq-answer {
+    display: block;
+}
+
+/* Footer Styles */
+.mobile-footer {
+    padding: 20px;
+    margin-top: auto;
+}
+
+.footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.footer-links a {
+    color: white;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+}
+
+.footer-arrow {
+    height: 20px;
+    width: auto;
+}
+```
+
+```css
+/* cssfx_mobile.css */
+.scans-button:active {
+    transform: translate(2px, 2px);
+    box-shadow: 3px 3px 0px 0px rgba(255, 255, 255);
+}
+
+.mobile-nav a {
+    position: relative;
+    overflow: hidden;
+}
+
+.mobile-nav a::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: white;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+}
+
+.mobile-nav a:active::after {
+    transform: translateX(0);
+}
+
+.menu-button span {
+    transition: all 0.3s ease;
+}
+
+.menu-button.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 6px);
+}
+
+.menu-button.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.menu-button.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -8px);
+}
+
+.footer-links a {
+    transition: transform 0.3s ease;
+}
+
+.footer-links a:active {
+    transform: translateX(10px);
+}
+
+.faq-question {
+    transition: background-color 0.3s ease;
+}
+
+.faq-question:active {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* style_mobile.css */
+/* Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    text-align: center;
+}
+
+body {
+    background: black;
+    color: white;
+    font-family: SansSerif;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* Header & Navigation */
+.header {
+    padding: 15px;
+    text-align: center;
+    position: relative;
+}
+
+.headerIcon {
+    height: 40px;
+    width: auto;
+}
+
+.menu-button {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    padding: 10px;
+}
+
+.menu-button span {
+    display: block;
+    width: 25px;
+    height: 2px;
+    background: white;
+    margin: 5px 0;
+    transition: 0.3s;
+}
+
+.mobile-nav {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 80%;
+    height: 100vh;
+    background: black;
+    border-left: 1px solid white;
+    z-index: 999;
+    transition: 0.3s;
+    padding: 20px;
+}
+
+.nav-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+/* Form Styles */
+.auth-container {
+    padding: 20px;
+    margin: 20px;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+input {
+    width: 100%;
+    padding: 15px;
+    background: black;
+    border: 1px solid white;
+    color: white;
+    font-size: 16px;
+    border-radius: 0;
+}
+
+.password-field {
+    position: relative;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+}
+
+/* Scan Results Styles */
+.scan-mode-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+}
+
+.mode-button {
+    padding: 15px;
+    background: black;
+    border: 1px solid white;
+    color: white;
+    font-size: 16px;
+    text-align: left;
+    font-family: SansSerif;
+    text-align: center;
+}
+
+.result-section {
+    display: none;
+    padding: 20px;
+}
+
+.result-section.active {
+    display: block;
+}
+
+.result-item {
+    padding: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Account Page Styles */
+.account-section {
+    margin: 20px;
+    padding: 20px;
+    border: 1px solid white;
+}
+
+.storage-meter {
+    height: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 15px 0;
+}
+
+.storage-bar {
+    height: 100%;
+    background: white;
+    transition: width 0.3s ease;
+}
+
+.form-group {
+    margin: 20px 0;
+}
+
+.action-button {
+    width: 100%;
+    padding: 15px;
+    margin-top: 10px;
+    background: black;
+    border: 1px solid white;
+    color: white;
+    font-size: 16px;
+}
+
+.warning-button {
+    border-color: yellow;
+    color: yellow;
+}
+
+.delete-button {
+    border-color: red;
+    color: red;
+}
+
+/* Footer Styles */
+.mobile-footer {
+    padding: 20px;
+    margin-top: 40px;
+}
+
+.footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.footer-links a {
+    color: white;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Animations and Transitions */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-in-out;
+}
+
+.result-item {
+    padding: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.item-name {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.status {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Pro mode button styling */
+.pro-mode-toggle {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 15px;
+}
+
+.pro-button {
+    background: black;
+    color: white;
+    border: 1px solid white;
+    padding: 8px 15px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* Scan mode selector styling */
+.scan-mode-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+.mode-button {
+    padding: 12px;
+    background: black;
+    border: 1px solid white;
+    color: white;
+    font-size: 16px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.mode-button.active {
+    background: rgba(255, 255, 255, 0.1);
+    border-width: 2px;
+}
+
+/* Add more spacing between account sections */
+.account-section {
+    margin: 30px 20px; /* Increased from 20px margin */
+    padding: 25px 20px; /* Increased from 20px padding */
+    border: 1px solid white;
+}
+
+/* Add more spacing between form groups */
+.form-group {
+    margin: 30px 0; /* Increased from 20px margin */
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Add more spacing between inputs */
+.form-group input {
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+/* Add space between section headings and content */
+.account-section h2 {
+    margin-bottom: 25px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Add space between form group headings and inputs */
+.form-group h3 {
+    margin-bottom: 15px;
+}
+
+/* Make warning and delete buttons consistent with other buttons */
+.warning-button,
+.delete-button {
+    width: 100%;
+    padding: 15px;
+    margin-top: 15px;
+    background: black;
+    border: 2px solid;
+    font-size: 16px;
+    font-family: SansSerif;
+    box-shadow: 5px 5px 0px 0px rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+/* Style for warning button (Clear Logs) */
+.warning-button {
+    border-color: #ffc107; /* Warning yellow */
+    color: #ffc107;
+}
+
+/* Style for delete button (Delete Account) */
+.delete-button {
+    border-color: #ff5252; /* Danger red */
+    color: #ff5252;
+}
+
+/* Active state for both buttons */
+.warning-button:active,
+.delete-button:active {
+    transform: translate(2px, 2px);
+    box-shadow: 3px 3px 0px 0px rgba(255, 255, 255, 0.3);
+}
+
+/* Danger zone section styling */
+.account-section.danger {
+    border-color: #ff5252;
+    background-color: rgba(255, 82, 82, 0.1);
+}
+
+/* Warning text styling */
+.warning-text {
+    color: #ffc107;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 320px) {
+    .scan-legal-line {
+        font-size: 12px;
+    }
+
+    .scan-terms-link {
+        padding-left: 5%;
+    }
+
+    .action-button {
+        font-size: 14px;
+    }
+}
+
+@media (min-width: 480px) {
+    .auth-container {
+        max-width: 440px;
+        margin: 20px auto;
+    }
+
+    .scan-results-container {
+        max-width: 480px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .scan-results-container {
+        margin: 10px 20px 30px;
+        transition: all 0.3s ease;
+        opacity: 0;
+        max-height: 0;
+        overflow: hidden;
+    }
+
+    .scan-results-container.active {
+        opacity: 1;
+        max-height: 500px;
+        margin-bottom: 30px;
+    }
+
+    .scan-results-box {
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 4px;
+        padding: 15px;
+        max-height: 300px;
+        overflow-y: auto;
+        background: rgba(0, 0, 0, 0.5);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .scan-log {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+        font-size: 14px;
+        padding: 8px 5px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    .timestamp {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 12px;
+        min-width: 70px;
+    }
+
+    .log-message {
+        color: white;
+        text-align: left;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(5px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .scan-input {
+        padding: 15px;
+        font-size: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.7);
+        background-color: rgba(0, 0, 0, 0.5);
+        color: white;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+    }
+
+    .scan-input:focus {
+        border-color: white;
+        outline: none;
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+    }
+
+    .error-message {
+        color: #ff5252;
+        font-size: 14px;
+        text-align: left;
+        padding: 5px 0;
+        min-height: 20px;
+    }
+
+    /* Improve button styling */
+    .action-button {
+        background-color: rgba(0, 0, 0, 0.7);
+        border: 2px solid white;
+        color: white;
+        padding: 15px;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 4px;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .action-button:active {
+        transform: scale(0.98);
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Loading button style */
+    .action-button.loading {
+        padding-right: 40px; /* Space for the loading spinner */
+    }
+
+    .action-button.loading::after {
+        content: "";
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        top: 50%;
+        right: 15px;
+        transform: translateY(-50%);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+    }
+
+    .mobile-nav {
+        padding-top: 60px; /* More space at the top */
+    }
+
+    .mobile-nav a,
+    .mobile-dropdown .dropdown-header {
+        font-size: 18px;
+        padding: 18px 0;
+        transition: background-color 0.3s ease;
+    }
+
+    .mobile-nav a:active,
+    .mobile-dropdown .dropdown-header:active {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Improve mobile menu button positioning */
+    .menu-button {
+        position: fixed;
+        top: 22px;
+        right: 20px;
+        width: 30px;
+        height: 22px;
+        z-index: 1001; /* Higher than the mobile nav */
+        background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
+        border-radius: 3px;
+        padding: 8px;
+    }
+
+    .terms-checkbox {
+        margin: 0;
+        width: 20px;
+        height: 20px;
+        appearance: none;
+        -webkit-appearance: none;
+        border: 2px solid white;
+        background-color: black;
+        cursor: pointer;
+        position: relative;
+        border-radius: 3px; /* Slightly rounded corners */
+        vertical-align: middle;
+    }
+
+    /* Style for checked state */
+    .terms-checkbox:checked {
+        background-color: black;
+    }
+
+    /* Creates a white checkmark when checked */
+    .terms-checkbox:checked::after {
+        content: "✓";
+        position: absolute;
+        color: white;
+        font-size: 16px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        line-height: 1;
+    }
+
+    /* Optional: Add hover effect */
+    .terms-checkbox:hover {
+        background-color: #333;
+    }
+
+    /* Fix alignment of legal consent container */
+    .scan-legal-container {
+        padding: 15px;
+        margin: 10px 0;
+        text-align: left;
+    }
+
+    .scan-legal-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        font-size: 14px;
+        flex-wrap: wrap;
+    }
+
+    .scan-terms-link {
+        color: white;
+        text-decoration: underline;
+    }
+
+    /* For smaller mobile screens */
+    @media (max-width: 360px) {
+        .terms-checkbox {
+            width: 18px;
+            height: 18px;
+        }
+
+        .terms-checkbox:checked::after {
+            font-size: 14px;
+        }
+    }
+
+    .terms-container {
+        padding: 20px 15px;
+        text-align: left;
+        background-color: #000;
+        line-height: 1.7; /* Increased line height for better readability */
+    }
+
+    .terms-container h1 {
+        font-size: 26px;
+        margin-bottom: 15px;
+        font-family: SansSerif;
+        text-align: center;
+        color: #ffffff;
+        letter-spacing: 0.5px; /* Better letter spacing */
+    }
+
+    .last-update {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.8); /* Improved contrast */
+        margin-bottom: 25px;
+        text-align: center;
+    }
+
+    .terms-intro {
+        margin-bottom: 30px;
+        font-size: 16px; /* Increased font size */
+        line-height: 1.7;
+        background-color: rgba(255, 255, 255, 0.05); /* Slight background for emphasis */
+        padding: 15px;
+        border-radius: 5px;
+    }
+
+    .terms-section {
+        margin-bottom: 35px; /* More space between sections */
+        padding-bottom: 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Subtle dividers */
+    }
+
+    .terms-section h2 {
+        font-size: 20px; /* Increased heading size */
+        margin-bottom: 18px;
+        font-family: SansSerif;
+        text-align: left;
+        color: #ffffff;
+        letter-spacing: 0.5px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .terms-section h3 {
+        font-size: 18px; /* Increased sub-heading size */
+        margin: 20px 0 12px;
+        font-family: SansSerif;
+        text-align: left;
+        color: rgba(255, 255, 255, 0.95);
+    }
+
+    .terms-section p {
+        margin-bottom: 15px; /* More space between paragraphs */
+        font-size: 16px; /* Larger font size */
+        line-height: 1.7; /* Increased line height */
+        color: rgba(255, 255, 255, 0.9);
+        text-align: left;
+        letter-spacing: 0.3px; /* Slightly increased letter spacing */
+        word-spacing: 1px; /* Slightly increased word spacing */
+    }
+
+    /* Add more contrast to bullet points */
+    .terms-section p:not(:last-child)::before {
+        content: "";
+        display: inline-block;
+        width: 5px;
+        height: 5px;
+        background-color: white;
+        border-radius: 50%;
+        margin-right: 10px;
+        vertical-align: middle;
+    }
+
+    .terms-section a {
+        color: #fff;
+        text-decoration: underline;
+        font-weight: bold; /* Make links stand out */
+    }
+
+    .terms-section.acceptance {
+        background-color: rgba(255, 255, 255, 0.08); /* Slightly more visible */
+        padding: 20px;
+        border-radius: 5px;
+        border: 1px solid rgba(255, 255, 255, 0.2); /* Add border */
+        margin-top: 40px; /* More separation */
+    }
+
+    .terms-section.acceptance h2 {
+        color: rgba(255, 255, 255, 1);
+        text-align: center;
+        border-bottom: none; /* Remove border for this heading */
+    }
+
+    .terms-section.acceptance p {
+        font-weight: bold;
+        font-size: 17px; /* Slightly larger font */
+    }
+
+    /* Add a slight text shadow to improve readability on black background */
+    .terms-container h1,
+    .terms-container h2,
+    .terms-container h3 {
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    }
+
+    @media (min-width: 480px) {
+        .terms-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 30px 25px; /* Slightly more padding */
+        }
+
+        .terms-container h1 {
+            font-size: 30px;
+        }
+
+        .terms-section h2 {
+            font-size: 22px;
+        }
+
+        .terms-section h3 {
+            font-size: 19px;
+        }
+
+        .terms-section p {
+            font-size: 17px;
+        }
+    }
+
+    /* Fix the issue with bullet points in specific places */
+    .terms-section p.no-bullet::before,
+    .terms-intro p::before,
+    .terms-section.acceptance p::before {
+        display: none; /* Remove bullets from these paragraphs */
+    }
+
+    /* Better handling of "-" prefixed list items */
+    p[class*="-"] {
+        display: flex;
+        align-items: flex-start;
+        text-indent: -15px;
+        padding-left: 15px;
+    }
+
+    /* Add a scroll-to-top button for long content */
+    .scroll-top {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.9);
+        color: #000;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        z-index: 100;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .scroll-top.visible {
+        opacity: 1;
+    }
+
+    /* Terms and Conditions improved readability styles */
+    .terms-container {
+        padding: 20px 15px;
+        text-align: left;
+        background-color: #000;
+        line-height: 1.7;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .terms-container h1 {
+        font-size: 24px; /* Slightly smaller for the smallest screens */
+        margin-bottom: 15px;
+        font-family: SansSerif;
+        text-align: center;
+        color: #ffffff;
+        letter-spacing: 0.5px;
+        word-wrap: break-word; /* Ensure long words wrap */
+    }
+
+    .last-update {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 25px;
+        text-align: center;
+    }
+
+    .terms-intro {
+        margin-bottom: 25px;
+        font-size: 15px; /* Slightly smaller for the smallest screens */
+        line-height: 1.6;
+        background-color: rgba(255, 255, 255, 0.05);
+        padding: 12px;
+        border-radius: 5px;
+        word-wrap: break-word;
+    }
+
+    .terms-section {
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .terms-section h2 {
+        font-size: 18px; /* Smaller for mobile */
+        margin-bottom: 15px;
+        font-family: SansSerif;
+        text-align: left;
+        color: #ffffff;
+        letter-spacing: 0.3px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        word-wrap: break-word;
+    }
+
+    .terms-section h3 {
+        font-size: 16px; /* Smaller for mobile */
+        margin: 18px 0 10px;
+        font-family: SansSerif;
+        text-align: left;
+        color: rgba(255, 255, 255, 0.95);
+        word-wrap: break-word;
+    }
+
+    .terms-section p {
+        margin-bottom: 12px;
+        font-size: 14px; /* Smaller for mobile */
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.9);
+        text-align: left;
+        letter-spacing: 0.2px;
+        word-spacing: 0.5px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+    }
+
+    /* Modified bullet point styling */
+    .terms-section p:not(.no-bullet)::before {
+        content: "";
+        display: inline-block;
+        min-width: 5px;
+        height: 5px;
+        background-color: white;
+        border-radius: 50%;
+        margin-right: 8px;
+        margin-left: -15px;
+        vertical-align: middle;
+    }
+
+    .terms-section p:not(.no-bullet) {
+        padding-left: 15px;
+        position: relative;
+    }
+
+    .terms-section a {
+        color: #fff;
+        text-decoration: underline;
+        font-weight: bold;
+        word-break: break-all; /* Allow email links to break */
+    }
+
+    .terms-section.acceptance {
+        background-color: rgba(255, 255, 255, 0.08);
+        padding: 15px;
+        border-radius: 5px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        margin-top: 30px;
+    }
+
+    .terms-section.acceptance h2 {
+        color: rgba(255, 255, 255, 1);
+        text-align: center;
+        border-bottom: none;
+        font-size: 18px;
+    }
+
+    .terms-section.acceptance p {
+        font-weight: bold;
+        font-size: 14px;
+    }
+
+    /* Add a slight text shadow to improve readability on black background */
+    .terms-container h1,
+    .terms-container h2,
+    .terms-container h3 {
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Better handling of "-" prefixed list items */
+    p[class*="-"] {
+        display: flex;
+        align-items: flex-start;
+        text-indent: -15px;
+        padding-left: 15px;
+        margin-left: 0;
+    }
+
+    /* Add a scroll-to-top button for long content */
+    .scroll-top {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.9);
+        color: #000;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        z-index: 100;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .scroll-top.visible {
+        opacity: 1;
+    }
+
+    /* Extra small devices (phones, 320px and under) */
+    @media (max-width: 320px) {
+        .terms-container {
+            padding: 15px 10px;
+        }
+
+        .terms-container h1 {
+            font-size: 20px;
+        }
+
+        .last-update {
+            font-size: 12px;
+        }
+
+        .terms-intro {
+            font-size: 14px;
+            padding: 10px;
+        }
+
+        .terms-section h2 {
+            font-size: 16px;
+        }
+
+        .terms-section h3 {
+            font-size: 15px;
+        }
+
+        .terms-section p {
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .terms-section.acceptance h2 {
+            font-size: 16px;
+        }
+
+        .terms-section.acceptance p {
+            font-size: 13px;
+        }
+
+        .scroll-top {
+            width: 35px;
+            height: 35px;
+            font-size: 18px;
+            bottom: 15px;
+            right: 15px;
+        }
+    }
+
+    /* Small devices (phones, 321px to 375px) */
+    @media (min-width: 321px) and (max-width: 375px) {
+        .terms-container {
+            padding: 15px 12px;
+        }
+
+        .terms-container h1 {
+            font-size: 22px;
+        }
+
+        .terms-section h2 {
+            font-size: 17px;
+        }
+
+        .terms-section p {
+            font-size: 14px;
+        }
+    }
+
+    /* Medium devices (phones, 376px to 425px) */
+    @media (min-width: 376px) and (max-width: 425px) {
+        .terms-container {
+            padding: 18px 15px;
+        }
+
+        .terms-container h1 {
+            font-size: 23px;
+        }
+
+        .terms-section h2 {
+            font-size: 18px;
+        }
+    }
+
+    /* Larger phones (426px to 483px) */
+    @media (min-width: 426px) and (max-width: 483px) {
+        .terms-container {
+            padding: 20px 18px;
+        }
+    }
+
+    /* Tablets and larger (484px and up) */
+    @media (min-width: 484px) {
+        .terms-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 30px 25px;
+        }
+
+        .terms-container h1 {
+            font-size: 28px;
+        }
+
+        .last-update {
+            font-size: 14px;
+        }
+
+        .terms-intro {
+            font-size: 16px;
+            line-height: 1.7;
+            padding: 15px;
+        }
+
+        .terms-section h2 {
+            font-size: 20px;
+            margin-bottom: 18px;
+        }
+
+        .terms-section h3 {
+            font-size: 18px;
+        }
+
+        .terms-section p {
+            font-size: 16px;
+            line-height: 1.7;
+            margin-bottom: 15px;
+        }
+
+        .terms-section.acceptance {
+            padding: 20px;
+        }
+
+        .terms-section.acceptance h2 {
+            font-size: 20px;
+        }
+
+        .terms-section.acceptance p {
+            font-size: 16px;
+        }
+    }
+
+    /* Fix for bulleted lists and improve their readability */
+    .bullet-list {
+        list-style: none;
+        padding-left: 20px;
+        margin-bottom: 15px;
+    }
+
+    .bullet-list li {
+        position: relative;
+        padding-left: 15px;
+        margin-bottom: 8px;
+        line-height: 1.6;
+    }
+
+    .bullet-list li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 9px;
+        width: 5px;
+        height: 5px;
+        background-color: white;
+        border-radius: 50%;
+    }
+
+    /* Ensure the header is always visible */
+    .header {
+        padding: 15px;
+        text-align: center;
+        background-color: #000;
+        width: 100%;
+        box-sizing: border-box;
+        z-index: 10;
+    }
+
+    .headerIcon {
+        height: 40px;
+        width: auto;
+        max-width: 80%;
+    }
+
+    /* Ensure footer is properly displayed */
+    .mobile-footer {
+        padding: 20px 15px;
+        margin-top: 30px;
+        width: 100%;
+        box-sizing: border-box;
+        background-color: #000;
+    }
+
+    /* Ensure layout is full width */
+    .layout {
+        width: 100%;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    /* Remove any horizontal scrolling */
+    html, body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }

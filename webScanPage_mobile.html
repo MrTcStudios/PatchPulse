@@ -1,0 +1,187 @@
+<!doctype html>
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="style_mobile.css" />
+        <link rel="stylesheet" type="text/css" href="cssfx_mobile.css" />
+        <title>PatchPulse - Web Scan</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <style>
+            /* Custom checkbox styling - Mobile first approach */
+            .scan-legal-container {
+                padding: 15px;
+                margin: 10px 0;
+                text-align: left;
+            }
+
+            .scan-legal-line {
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+                margin: 0;
+                font-size: 14px;
+                position: relative;
+            }
+
+            .scan-terms-link {
+                color: white;
+                text-decoration: underline;
+            }
+
+            /* Custom checkbox styling that works across all browsers and screen sizes */
+            .terms-checkbox {
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                appearance: none;
+                width: 22px;
+                height: 22px;
+                border: 2px solid white;
+                background-color: black;
+                margin: 0;
+                cursor: pointer;
+                position: relative;
+                border-radius: 3px;
+                flex-shrink: 0;
+                vertical-align: middle; /* Helps with alignment inside flex container */
+                align-self: center; /* Further ensures vertical centering */
+            }
+
+            /* Firefox specific styling */
+            @-moz-document url-prefix() {
+                .terms-checkbox {
+                    background-color: black;
+                }
+            }
+
+            /* Checked state styling */
+            .terms-checkbox:checked::after {
+                content: "✓";
+                position: absolute;
+                color: white;
+                font-size: 16px;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                line-height: 1;
+            }
+
+            /* Focus state for accessibility */
+            .terms-checkbox:focus {
+                outline: none;
+                box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+            }
+
+            /* Make the text and link wrap properly */
+            .p2 {
+                flex: 1;
+                min-width: 200px;
+            }
+        </style>
+    </head>
+    <body>
+        <section class="layout">
+            <!-- Mobile Header -->
+            <div class="header">
+                <img
+                    class="headerIcon"
+                    src="PatchPulseLogo.svg"
+                    alt="PatchPulse Logo"
+                />
+                <!-- Mobile Menu Button -->
+                <div class="menu-button">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+
+            <!-- Mobile Navigation -->
+            <div class="mobile-nav">
+                <div class="nav-header">
+                    <img class="nav-logo" src="PatchPulseLogo.svg" alt="Logo" />
+                </div>
+                <a href="homePage_mobile.html">Home</a>
+                <div class="mobile-dropdown">
+                    <div class="dropdown-header">Tools</div>
+                    <div class="dropdown-items">
+                        <a href="#">Fast Scan</a>
+                        <a href="#">Web Scan</a>
+                        <a href="#">Port Scan</a>
+                    </div>
+                </div>
+                <a href="#" class="login-btn">Log In / Sign Up</a>
+            </div>
+
+            <!-- Scan Form Section -->
+            <div class="auth-container">
+                <form class="auth-form">
+                    <input
+                        type="url"
+                        placeholder="Enter URL to scan"
+                        required
+                        class="scan-input"
+                    />
+                    <div class="error-message"></div>
+
+                    <!-- Legal Consent Section -->
+                    <div class="scan-legal-container">
+                        <label class="scan-legal-line" for="legalConsent">
+                            <input
+                                type="checkbox"
+                                name="AgreeTerms"
+                                id="legalConsent"
+                                required
+                                class="terms-checkbox"
+                            />
+                            <span class="p2">
+                                I have legal permission to scan this website and
+                                I accept the
+                                <a
+                                    href="policy/terms_and_conditions.php"
+                                    target="_blank"
+                                    class="scan-terms-link"
+                                    >Terms and Conditions</a
+                                >
+                            </span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="action-button">
+                        SCAN NOW
+                    </button>
+                </form>
+            </div>
+
+            <!-- Scan Results Container -->
+            <div class="scan-results-container">
+                <div class="scan-results-box"></div>
+            </div>
+
+            <!-- Mobile Footer -->
+            <div class="mobile-footer">
+                <div class="footer-links">
+                    <a href="#">
+                        <img
+                            class="footer-arrow"
+                            src="arrow1.png"
+                            alt=""
+                        />Github
+                    </a>
+                    <a href="#">
+                        <img
+                            class="footer-arrow"
+                            src="arrow1.png"
+                            alt=""
+                        />Contact Us
+                    </a>
+                    <a href="#">
+                        <img class="footer-arrow" src="arrow1.png" alt="" />Our
+                        Organization
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <script src="script_mobile.js"></script>
+    </body>
+</html>

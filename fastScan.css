@@ -1,0 +1,14 @@
+.center-button-right {
+    background-color: black;
+    color: white;
+    padding: 10px 20px;
+    border: 1px solid white;
+    cursor: pointer;
+    border-color: white;
+    font-size: 2vw;
+    font-family: SansSerif;
+    padding: 1vw;
+
+    box-shadow: 0vw 0.5vw 0px 0px rgba(255, 255, 255);
+    transition: all 1s ease;
+}

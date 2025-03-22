@@ -1,0 +1,156 @@
+<!doctype html>
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="style.css" />
+        <link rel="stylesheet" type="text/css" href="cssfx.css" />
+        <title>PatchPulse - Account</title>
+        <meta charset="UTF-8" />
+    </head>
+    <body>
+        <section class="layout">
+            <div class="header">
+                <img
+                    class="headerIcon"
+                    src="PatchPulseLogo.svg"
+                    alt="CentredLogo"
+                />
+                <span
+                    ><a href="homePage.html" class="headerButton">Home</a></span
+                >
+                <span
+                    ><div class="dropdown">
+                        <a href="#" class="headerButton">Tool</a>
+                        <div class="dropdown-content">
+                            <a href="#">Fast Scan</a>
+                            <a href="#">Web Scan</a>
+                            <a href="#">Port Scan</a>
+                            <a href="#">Custom Scan</a>
+                        </div>
+                    </div></span
+                >
+                <span
+                    ><a href="accountPage.html" class="headerButton"
+                        >Account</a
+                    ></span
+                >
+                <button class="inout-button">Log Out</button>
+            </div>
+        </section>
+
+        <h1 class="logRegText">Account Management</h1>
+
+        <div class="account-container">
+            <!-- Account Overview Section -->
+            <div class="account-section">
+                <h2>Account Overview</h2>
+                <div class="storage-info">
+                    <div class="storage-meter">
+                        <div
+                            class="storage-bar"
+                            id="storageBar"
+                            style="width: 65%"
+                        ></div>
+                    </div>
+                    <p class="storage-text">
+                        Storage Used: <span id="usedStorage">650</span>MB /
+                        <span id="totalStorage">1000</span>MB
+                    </p>
+                </div>
+            </div>
+
+            <!-- Security Settings Section -->
+            <div class="account-section">
+                <h2>Security Settings</h2>
+                <form class="settings-form">
+                    <div class="form-group">
+                        <h3>Change Password</h3>
+                        <input
+                            type="password"
+                            class="form1"
+                            placeholder="Current Password"
+                        />
+                        <input
+                            type="password"
+                            class="form1"
+                            placeholder="New Password"
+                        />
+                        <input
+                            type="password"
+                            class="form1"
+                            placeholder="Confirm New Password"
+                        />
+                        <button type="submit" class="action-button">
+                            Update Password
+                        </button>
+                    </div>
+
+                    <div class="form-group">
+                        <h3>Change Email</h3>
+                        <input
+                            type="email"
+                            class="form1"
+                            placeholder="Current Email"
+                        />
+                        <input
+                            type="email"
+                            class="form1"
+                            placeholder="New Email"
+                        />
+                        <button type="submit" class="action-button">
+                            Update Email
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Logs Section -->
+            <div class="account-section">
+                <h2>Activity Logs</h2>
+                <div class="logs-container">
+                    <div class="log-entry">
+                        <span class="log-date">2024-01-20 14:30</span>
+                        <span class="log-action">Password changed</span>
+                        <span class="log-ip">IP: 192.168.1.1</span>
+                    </div>
+                    <div class="log-entry">
+                        <span class="log-date">2024-01-19 10:15</span>
+                        <span class="log-action">Login successful</span>
+                        <span class="log-ip">IP: 192.168.1.1</span>
+                    </div>
+                    <!-- More log entries -->
+                </div>
+                <div class="action-button warning">Clear Logs</div>
+            </div>
+
+            <!-- Danger Zone Section -->
+            <div class="account-section danger-zone">
+                <h2>Danger Zone</h2>
+                <p class="warning-text">These actions cannot be undone!</p>
+                <div class="danger-actions">
+                    <div class="action-button delete">Delete All Logs</div>
+                    <div class="action-button delete">Delete Account</div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="sectionLine" />
+        <!-- Footer section remains the same -->
+        <div class="fot1">
+            <ul>
+                <li>
+                    <img class="arrowsFot" src="arrow1.png" alt="" />
+                    <a href="" class="faqButton">Github</a>
+                </li>
+                <li>
+                    <img class="arrowsFot" src="arrow1.png" alt="" />
+                    <a href="" class="faqButton">Contact Us</a>
+                </li>
+                <li>
+                    <img class="arrowsFot" src="arrow1.png" alt="" />
+                    <a href="" class="faqButton">Our Organization</a>
+                </li>
+            </ul>
+        </div>
+        <hr class="sectionLine" />
+    </body>
+</html>
