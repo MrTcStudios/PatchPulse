@@ -1,6 +1,4 @@
 <?php
-// NON ULTIMATO, DA RIVEDERE
-
 include("../config.php");
 
 if (!isset($_SESSION['user_id'])) {
@@ -16,7 +14,6 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 $scan_id = $_GET['id'];
 $user_id = $_SESSION['user_id'];
 
-// Recupera i dettagli della scansione assicurandosi che appartenga all'utente corrente
 $stmt = $conn->prepare("
     SELECT * FROM scans WHERE id = ? AND user_id = ?
 ");
@@ -24,7 +21,6 @@ $stmt->bind_param("ii", $scan_id, $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
-// Se la scansione non esiste o non appartiene all'utente, reindirizza alla pagina account
 if ($result->num_rows === 0) {
     header("Location: ../accountPage.php");
     exit();
@@ -33,7 +29,6 @@ if ($result->num_rows === 0) {
 $scan = $result->fetch_assoc();
 $stmt->close();
 
-// Recupera i dettagli aggiuntivi dalla tabella scan_details
 $details = [];
 $stmt = $conn->prepare("SELECT parameter, value, risk_level FROM scan_details WHERE scan_id = ?");
 $stmt->bind_param("i", $scan_id);
@@ -44,63 +39,6 @@ while($row = $details_result->fetch_assoc()) {
 }
 $stmt->close();
 
-// Converti i valori booleani in testo per la visualizzazione
-function boolToText($value) {
-    if ($value === "1" || $value === true || $value === "true") return "Enabled";
-    if ($value === "0" || $value === false || $value === "false") return "Disabled";
-    return $value ?: "Unknown";
-}
-
-// Funzione per determinare il livello di rischio basato sui risultati della scansione (DA RIVEDERE MOLTO)
-function calculateRiskLevel($scan) {
-    $risk_factors = 0;
-    
-    if ($scan['cookiesEnabled'] == "1") $risk_factors++;
-    if ($scan['doNotTrack'] == "0") $risk_factors++;
-    if ($scan['browserFingerprinting'] == "1") $risk_factors += 2;
-    if ($scan['webrtcSupport'] == "1") $risk_factors++;
-    if ($scan['httpsOnly'] == "0") $risk_factors += 2;
-    if ($scan['adBlockEnabled'] == "0") $risk_factors++;
-
-    // Aggiunge i nuovi campi al calcolo del rischio (DA RIVEDERE COMPLETAMENTE)
-    if ($scan['javascriptStatus'] == "1") $risk_factors++;
-    if ($scan['webglFingerprinting'] == "1") $risk_factors += 2;
-    if ($scan['developerMode'] == "1") $risk_factors++;
-    if ($scan['webAssemblySupport'] == "1") $risk_factors++;
-    if ($scan['webWorkersSupported'] == "1") $risk_factors++;
-    if ($scan['mediaQueriesSupported'] == "1") $risk_factors++;
-    if ($scan['webNotificationsSupported'] == "1") $risk_factors++;
-    if ($scan['permissionsAPISupported'] == "1") $risk_factors++;
-    if ($scan['paymentRequestAPISupported'] == "1") $risk_factors++;
-    if ($scan['htmlCssSupport'] == "0") $risk_factors++;
-    if ($scan['geolocationInfo'] == "1") $risk_factors++;
-    if ($scan['sensorsSupported'] == "1") $risk_factors++;
-    if ($scan['popupsEnabled'] == "1") $risk_factors++;
-    if ($scan['publicIpv4'] == "1") $risk_factors++;
-    if ($scan['publicIpv6'] == "1") $risk_factors++;
-    if ($scan['browserType'] == "Chrome") $risk_factors++;
-    if ($scan['browserVersion'] < 90) $risk_factors++;
-    if ($scan['osVersion'] < 10) $risk_factors++;
-    if ($scan['incognitoMode'] == "0") $risk_factors++;
-    if ($scan['deviceMemory'] < 4) $risk_factors++;
-    if ($scan['cpuThreads'] < 4) $risk_factors++;
-    if ($scan['cpuCores'] < 2) $risk_factors++;
-    if ($scan['gpuName'] == "Unknown") $risk_factors++;
-    if ($scan['colorDepth'] < 24) $risk_factors++;
-    if ($scan['pixelDepth'] < 24) $risk_factors++;
-    if ($scan['touchSupport'] == "1") $risk_factors++;
-    if ($scan['screenResolution'] < 1080) $risk_factors++;
-    if ($scan['mimeTypes'] == "Unknown") $risk_factors++;
-    if ($scan['referrerPolicy'] == "no-referrer") $risk_factors++;
-    if ($scan['batteryStatus'] == "Low") $risk_factors++;
-    if ($scan['securityProtocols'] == "Weak") $risk_factors++;
-    
-    if ($risk_factors <= 2) return ["Low", "#4CAF50"];
-    if ($risk_factors <= 5) return ["Medium", "#FFC107"];
-    return ["High", "#F44336"];
-}
-
-$risk_info = calculateRiskLevel($scan);
 ?>
 
 <!DOCTYPE html>
@@ -151,51 +89,49 @@ $risk_info = calculateRiskLevel($scan);
                     <div class="scan-id">Scan ID: #<?php echo htmlspecialchars($scan['id']); ?></div>
                     <div class="scan-date"><?php echo htmlspecialchars($scan['created_at']); ?></div>
                 </div>
-                <div class="scan-risk" style="background-color: <?php echo $risk_info[1]; ?>">
-                    Risk Level: <?php echo $risk_info[0]; ?>
-                </div>
             </div>
             
             <div class="scan-summary">
+
     <div class="summary-item">
         <div class="item-label">Cookies</div>
-        <div class="item-value <?php echo ($scan['cookiesEnabled'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['cookiesEnabled']); ?>
+        <div class="item-value <?php echo ($scan['cookiesEnabled'] == "Sì") ? 'warning' : 'success'; ?>">
+            <?php echo htmlspecialchars($scan['cookiesEnabled']); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">Do Not Track</div>
-        <div class="item-value <?php echo ($scan['doNotTrack'] == "1") ? 'success' : 'warning'; ?>">
-            <?php echo boolToText($scan['doNotTrack']); ?>
+        <div class="item-value <?php echo ($scan['doNotTrack'] == "Disattivato") ? 'warning' : 'success'; ?>">
+            <?php echo htmlspecialchars($scan['doNotTrack']); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">Browser Fingerprinting</div>
-        <div class="item-value <?php echo ($scan['browserFingerprinting'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['browserFingerprinting']); ?>
+        <div class="item-value neutral">
+            <?php echo htmlspecialchars($scan['browserFingerprinting'] ?: "Unknown"); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">WebRTC Support</div>
-        <div class="item-value <?php echo ($scan['webrtcSupport'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['webrtcSupport']); ?>
+        <div class="item-value <?php echo ($scan['webrtcSupport'] == "Abilitato") ? 'warning' : 'success'; ?>">
+            <?php echo htmlspecialchars($scan['webrtcSupport']); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">HTTPS Only</div>
-        <div class="item-value <?php echo ($scan['httpsOnly'] == "1") ? 'success' : 'warning'; ?>">
-            <?php echo boolToText($scan['httpsOnly']); ?>
+        <div class="item-value <?php echo ($scan['httpsOnly'] == "Attivo") ? 'success' : 'warning'; ?>">
+            <?php echo htmlspecialchars($scan['httpsOnly']); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">Ad Block</div>
-        <div class="item-value <?php echo ($scan['adBlockEnabled'] == "1") ? 'success' : 'warning'; ?>">
-            <?php echo boolToText($scan['adBlockEnabled']); ?>
+        <div class="item-value <?php echo ($scan['adBlockEnabled'] == "Sì") ? 'success' : 'warning'; ?>">
+            <?php echo htmlspecialchars($scan['adBlockEnabled']); ?>
         </div>
     </div>
     
@@ -206,95 +142,94 @@ $risk_info = calculateRiskLevel($scan);
         </div>
     </div>
 
-    <!-- Nuovi campi aggiunti -->
     <div class="summary-item">
         <div class="item-label">JavaScript Status</div>
-        <div class="item-value <?php echo ($scan['javascriptStatus'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['javascriptStatus']); ?>
+        <div class="item-value neutral">
+            <?php echo htmlspecialchars($scan['javascriptStatus'] ?: "Unknown"); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">WebGL Fingerprinting</div>
-        <div class="item-value <?php echo ($scan['webglFingerprinting'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['webglFingerprinting']); ?>
+        <div class="item-value neutral">
+            <?php echo htmlspecialchars($scan['webglFingerprinting'] ?: "Unknown"); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">Developer Mode</div>
-        <div class="item-value <?php echo ($scan['developerMode'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['developerMode']); ?>
+        <div class="item-value neutral">
+            <?php echo htmlspecialchars($scan['developerMode'] ?: "Unknown"); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">WebAssembly Support</div>
-        <div class="item-value <?php echo ($scan['webAssemblySupport'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['webAssemblySupport']); ?>
+        <div class="item-value neutral">
+            <?php echo htmlspecialchars($scan['webAssemblySupport'] ?: "Unknown"); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">Web Workers Supported</div>
-        <div class="item-value <?php echo ($scan['webWorkersSupported'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['webWorkersSupported']); ?>
+        <div class="item-value neutral">
+            <?php echo htmlspecialchars($scan['webWorkersSupported'] ?: "Unknown"); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">Media Queries Supported</div>
-        <div class="item-value <?php echo ($scan['mediaQueriesSupported'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['mediaQueriesSupported']); ?>
+        <div class="item-value neutral">
+            <?php echo htmlspecialchars($scan['mediaQueriesSupported'] ?: "Unknown"); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">Web Notifications Supported</div>
-        <div class="item-value <?php echo ($scan['webNotificationsSupported'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['webNotificationsSupported']); ?>
+        <div class="item-value neutral">
+            <?php echo htmlspecialchars($scan['webNotificationsSupported'] ?: "Unknown"); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">Permissions API Supported</div>
-        <div class="item-value <?php echo ($scan['permissionsAPISupported'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['permissionsAPISupported']); ?>
+        <div class="item-value neutral">
+            <?php echo htmlspecialchars($scan['permissionsAPISupported'] ?: "Unknown"); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">Payment Request API Supported</div>
-        <div class="item-value <?php echo ($scan['paymentRequestAPISupported'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['paymentRequestAPISupported']); ?>
+        <div class="item-value <?php echo ($scan['paymentRequestAPISupported'] == "Sì") ? 'warning' : 'success'; ?>">
+            <?php echo htmlspecialchars($scan['paymentRequestAPISupported']); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">HTML/CSS Support</div>
-        <div class="item-value <?php echo ($scan['htmlCssSupport'] == "1") ? 'success' : 'warning'; ?>">
-            <?php echo boolToText($scan['htmlCssSupport']); ?>
+        <div class="item-value neutral">
+            <?php echo htmlspecialchars($scan['htmlCssSupport'] ?: "Unknown"); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">Geolocation Info</div>
-        <div class="item-value <?php echo ($scan['geolocationInfo'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['geolocationInfo']); ?>
+        <div class="item-value neutral">
+            <?php echo htmlspecialchars($scan['geolocationInfo'] ?: "Unknown"); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">Sensors Supported</div>
-        <div class="item-value <?php echo ($scan['sensorsSupported'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['sensorsSupported']); ?>
+        <div class="item-value neutral">
+            <?php echo htmlspecialchars($scan['sensorsSupported'] ?: "Unknown"); ?>
         </div>
     </div>
     
     <div class="summary-item">
         <div class="item-label">Popups Enabled</div>
-        <div class="item-value <?php echo ($scan['popupsEnabled'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['popupsEnabled']); ?>
+        <div class="item-value <?php echo ($scan['popupsEnabled'] == "Sì") ? 'warning' : 'success'; ?>">
+            <?php echo htmlspecialchars($scan['popupsEnabled']); ?>
         </div>
     </div>
     
@@ -342,8 +277,8 @@ $risk_info = calculateRiskLevel($scan);
     
     <div class="summary-item">
         <div class="item-label">Incognito Mode</div>
-        <div class="item-value <?php echo ($scan['incognitoMode'] == "1") ? 'success' : 'warning'; ?>">
-            <?php echo boolToText($scan['incognitoMode']); ?>
+        <div class="item-value <?php echo ($scan['incognitoMode'] == "NON attiva (Brave)." || $scan['incognitoMode'] == "NON attiva (Chrome)." || $scan['incognitoMode'] == "NON attiva (Brave)." || $scan['incognitoMode'] == "NON attiva (Firefox)." || $scan['incognitoMode'] == "NON attiva (Safari).") ? 'warning' : 'success'; ?>">
+            <?php echo htmlspecialchars($scan['incognitoMode']); ?>
         </div>
     </div>
     
@@ -391,8 +326,8 @@ $risk_info = calculateRiskLevel($scan);
     
     <div class="summary-item">
         <div class="item-label">Touch Support</div>
-        <div class="item-value <?php echo ($scan['touchSupport'] == "1") ? 'warning' : 'success'; ?>">
-            <?php echo boolToText($scan['touchSupport']); ?>
+        <div class="item-value neutral">
+            <?php echo htmlspecialchars($scan['touchSupport'] ?: "Unknown"); ?>
         </div>
     </div>
     
@@ -459,48 +394,56 @@ $risk_info = calculateRiskLevel($scan);
             <?php endif; ?>
             
             <div class="recommendations">
-                <h3>Security Recommendations</h3>
-                <?php if ($scan['cookiesEnabled'] == "1"): ?>
-                <div class="recommendation-item">
-                    Consider disabling cookies or using browser's privacy mode to reduce tracking.
-                </div>
-                <?php endif; ?>
-                
-                <?php if ($scan['doNotTrack'] == "0"): ?>
-                <div class="recommendation-item">
-                    Enable "Do Not Track" in your browser settings to request websites not to track your browsing.
-                </div>
-                <?php endif; ?>
-                
-                <?php if ($scan['browserFingerprinting'] == "1"): ?>
-                <div class="recommendation-item">
-                    Use a browser extension that reduces fingerprinting, such as Privacy Badger or Canvas Blocker.
-                </div>
-                <?php endif; ?>
-                
-                <?php if ($scan['webrtcSupport'] == "1"): ?>
-                <div class="recommendation-item">
-                    Consider using a WebRTC blocking extension if privacy is a concern.
-                </div>
-                <?php endif; ?>
-                
-                <?php if ($scan['httpsOnly'] == "0"): ?>
-                <div class="recommendation-item">
-                    Enable "HTTPS-Only Mode" in your browser for enhanced security.
-                </div>
-                <?php endif; ?>
-                
-                <?php if ($scan['adBlockEnabled'] == "0"): ?>
-                <div class="recommendation-item">
-                    Consider using an ad blocker to reduce tracking and improve security.
-                </div>
-                <?php endif; ?>
-            </div>
+    <h3>Security recommendations</h3>
+    
+    <?php if ($scan['cookiesEnabled'] == "Sì"): ?>
+    <div class="recommendation-item">
+        <strong>🍪 Cookie Tracking Reduction:</strong>
+        Consider disabling third-party cookies or using your browser's private/incognito mode. Cookies can track your online activities across different websites, potentially compromising your digital privacy.
+    </div>
+    <?php endif; ?>
+    
+    <?php if ($scan['doNotTrack'] == "Disattivato"): ?>
+    <div class="recommendation-item">
+        <strong>🚫 Activate Do Not Track:</strong>
+        Enable the "Do Not Track" setting in your browser. This sends a signal to websites requesting them to stop tracking your browsing habits, providing an additional layer of privacy protection.
+    </div>
+    <?php endif; ?>
+    
+    <?php if ($scan['browserFingerprinting']): ?>
+    <div class="recommendation-item">
+        <strong>🕵️ Reduce Digital Fingerprinting:</strong>
+        Install browser extensions like Privacy Badger or Canvas Blocker to minimize digital fingerprinting. These tools help prevent websites from uniquely identifying your browser based on its characteristics.
+    </div>
+    <?php endif; ?>
+    
+    <?php if ($scan['webrtcSupport'] == "Abilitato"): ?>
+    <div class="recommendation-item">
+        <strong>🌐 WebRTC Privacy Protection:</strong>
+        Consider using a WebRTC blocking extension. WebRTC can potentially leak your real IP address even when using a VPN, compromising your online anonymity.
+    </div>
+    <?php endif; ?>
+    
+    <?php if ($scan['httpsOnly'] == "Non Attivo"): ?>
+    <div class="recommendation-item">
+        <strong>🔒 Secure Browsing Mode:</strong>
+        Activate "HTTPS-Only Mode" in your browser. This ensures that all your web communications are encrypted, protecting your data from potential interceptors and man-in-the-middle attacks.
+    </div>
+    <?php endif; ?>
+    
+    <?php if ($scan['adBlockEnabled'] == "No"): ?>
+    <div class="recommendation-item">
+        <strong>🛡️ Ad Blocking for Enhanced Security:</strong>
+        Install an ad blocker to reduce tracking, minimize potential malware risks, and improve your browsing experience. Ad blockers can prevent intrusive ads and reduce the risk of malicious content.
+    </div>
+    <?php endif; ?>
+</div>
             
             <a href="../accountPage.php" class="back-button">Back to Account</a>
         </div>
 
         <hr class="sectionLine" />
+        <!-- Footer section -->
         <div class="fot1">
             <ul>
                 <li>
