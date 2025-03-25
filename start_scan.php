@@ -2,51 +2,55 @@
 header("Access-Control-Allow-Origin: *");
 ini_set('display_errors', 0);
 ini_set('html_errors', 0);
-
-// Aggiungi questa linea per gestire CORS preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header("HTTP/1.1 200 OK");
-    exit();
-}
-
 header('Content-Type: application/json');
-
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path' => '/',
-    'domain' => '',
-    'secure' => true,
-    'httponly' => true,
-    'samesite' => 'Strict'
-]);
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 try {
-    // Verifica se è una richiesta POST
+    // Verifica metodo POST
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Metodo non consentito', 405);
     }
 
-    // Verifica se è presente il parametro target
-    $input = file_get_contents('php://input');
-    $data = json_decode($input, true);
-    
-    if (!isset($data['target'])) {
+    // Leggi l'input JSON
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (!isset($input['target'])) {
         throw new Exception('Target URL non fornito', 400);
     }
 
-    $target = $data['target'];
+    $target = $input['target'];
+
+    // Validazione HTTPS
     if (!filter_var($target, FILTER_VALIDATE_URL)) {
-        throw new Exception('Target URL non valido', 400);
+        throw new Exception('Formato URL non valido', 400);
     }
 
+    $parsed = parse_url($target);
+    if (strtolower($parsed['scheme'] ?? '') !== 'https') {
+        throw new Exception('Solo URL HTTPS sono permessi', 400);
+    }
+
+    // Validazione dominio
+    $host = strtolower($parsed['host'] ?? '');
+    if (!preg_match('/^([a-z0-9-]+\.)+[a-z]{2,}$/', $host)) {
+        throw new Exception('Dominio non valido', 400);
+    }
+
+    // Blocca indirizzi locali/privati
+    $forbidden = ['localhost', '127.0.0.1', '::1', '192.168.', '10.', '172.16.'];
+    foreach ($forbidden as $item) {
+        if (str_starts_with($host, $item)) {
+            throw new Exception('Scansione di indirizzi locali vietata', 403);
+        }
+    }
+
+    // Resto del codice invariato...
     $target = escapeshellarg($target);
     $scanId = uniqid();
     
-    $jarPath = __DIR__ . "/securitychecker-1.0-SNAPSHOT.jar";
+    $jarPath = __DIR__ . "/securitychecker-V1.1.jar";
     if (!file_exists($jarPath)) {
         throw new Exception("File JAR non trovato", 500);
     }
@@ -85,19 +89,15 @@ try {
         'start_time' => time()
     ];
     
-    http_response_code(200);
     echo json_encode([
         'scanId' => $scanId,
         'status' => 'started'
     ]);
-    exit;
-    
+
 } catch (Exception $e) {
     http_response_code($e->getCode() ?: 500);
     echo json_encode([
-        'error' => $e->getMessage(),
-        'code' => $e->getCode() ?: 500
+        'error' => $e->getMessage()
     ]);
-    exit;
 }
 ?>

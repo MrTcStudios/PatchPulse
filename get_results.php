@@ -2,46 +2,36 @@
 header("Access-Control-Allow-Origin: *");
 ini_set('display_errors', 0);
 ini_set('html_errors', 0);
-
-// Aggiungi questa linea per gestire CORS preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header("HTTP/1.1 200 OK");
-    exit();
-}
-
 header('Content-Type: application/json');
 
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path' => '/',
-    'domain' => '',
-    'secure' => true,
-    'httponly' => true,
-    'samesite' => 'Strict'
-]);
+// Verifica che la richiesta provenga da HTTPS
+if (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off') {
+    http_response_code(403);
+    echo json_encode(['error' => 'Accesso consentito solo via HTTPS']);
+    exit;
+}
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 try {
-    // Verifica se è una richiesta GET
+    // Verifica metodo GET
     if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
         throw new Exception('Metodo non consentito', 405);
     }
 
-    if (!isset($_GET['scanId']) || !ctype_alnum($_GET['scanId'])) {
-        throw new Exception('ScanId non valido', 400);
+    // Validazione scanId (solo esadecimale, 13 caratteri)
+    if (!isset($_GET['scanId']) || !preg_match('/^[a-f0-9]{13}$/', $_GET['scanId'])) {
+        throw new Exception('ID scansione non valido', 400);
     }
-
     $scanId = $_GET['scanId'];
-    $sessionKey = 'scan_' . $scanId;
     
-    if (!isset($_SESSION[$sessionKey])) {
-        throw new Exception('Sessione non trovata', 404);
+    if (!isset($_SESSION['scan_' . $scanId])) {
+        throw new Exception('Sessione di scansione non trovata', 404);
     }
     
-    $scan = $_SESSION[$sessionKey];
+    $scan = $_SESSION['scan_' . $scanId];
     $output = "";
     
     if (!$scan['completed']) {
@@ -72,19 +62,15 @@ try {
         }
     }
     
-    http_response_code(200);
     echo json_encode([
         'output' => $output,
         'completed' => $scan['completed']
     ]);
-    exit;
-    
+
 } catch (Exception $e) {
     http_response_code($e->getCode() ?: 500);
     echo json_encode([
-        'error' => $e->getMessage(),
-        'code' => $e->getCode() ?: 500
+        'error' => $e->getMessage()
     ]);
-    exit;
 }
 ?>
