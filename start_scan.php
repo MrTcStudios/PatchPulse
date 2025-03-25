@@ -1,33 +1,66 @@
 <?php
-// start_scan.php
+header("Access-Control-Allow-Origin: *");
 ini_set('display_errors', 0);
 ini_set('html_errors', 0);
 
+// Aggiungi questa linea per gestire CORS preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    header("HTTP/1.1 200 OK");
+    exit();
+}
+
 header('Content-Type: application/json');
+
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'domain' => '',
+    'secure' => true,
+    'httponly' => true,
+    'samesite' => 'Strict'
+]);
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 try {
-    if (!isset($_POST['target'])) {
-        throw new Exception('Target URL non fornito');
+    // Verifica se è una richiesta POST
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        throw new Exception('Metodo non consentito', 405);
     }
 
-    $target = escapeshellarg($_POST['target']);
+    // Verifica se è presente il parametro target
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+    
+    if (!isset($data['target'])) {
+        throw new Exception('Target URL non fornito', 400);
+    }
+
+    $target = $data['target'];
+    if (!filter_var($target, FILTER_VALIDATE_URL)) {
+        throw new Exception('Target URL non valido', 400);
+    }
+
+    $target = escapeshellarg($target);
     $scanId = uniqid();
     
     $jarPath = __DIR__ . "/securitychecker-1.0-SNAPSHOT.jar";
     if (!file_exists($jarPath)) {
-        throw new Exception("File JAR non trovato in: " . $jarPath);
+        throw new Exception("File JAR non trovato", 500);
     }
     
-    // Crea file temporanei per l'output con nomi basati sul scanId
-    $outputFile = sys_get_temp_dir() . "/scan_output_" . $scanId . ".txt";
-    $errorFile = sys_get_temp_dir() . "/scan_error_" . $scanId . ".txt";
-    $pidFile = sys_get_temp_dir() . "/scan_pid_" . $scanId . ".txt";
+    $outputFile = tempnam(sys_get_temp_dir(), 'scan_out_');
+    $errorFile = tempnam(sys_get_temp_dir(), 'scan_err_');
+    $pidFile = tempnam(sys_get_temp_dir(), 'scan_pid_');
     
-    $command = sprintf('(echo %s | java -jar "%s" > %s 2> %s & echo $! > %s)&',
+    chmod($outputFile, 0600);
+    chmod($errorFile, 0600);
+    chmod($pidFile, 0600);
+    
+    $command = sprintf(
+        '(echo %s | java -jar "%s" > %s 2> %s & echo $! > %s)&',
         $target,
         $jarPath,
         escapeshellarg($outputFile),
@@ -36,41 +69,35 @@ try {
     );
     
     exec($command);
+    usleep(100000);
     
-    // Aspetta un momento che il PID venga scritto
-    usleep(100000); // 0.1 secondi
-    
-    // Leggi il PID
     $pid = @file_get_contents($pidFile);
     if (empty($pid)) {
-        throw new Exception('Impossibile avviare il processo Java');
+        throw new Exception('Avvio processo fallito', 500);
     }
     
-    // Salva le informazioni nella sessione
-    $_SESSION['scan_' . $scanId] = array(
+    $_SESSION['scan_' . $scanId] = [
         'pid' => trim($pid),
         'output_file' => $outputFile,
         'error_file' => $errorFile,
         'pid_file' => $pidFile,
         'completed' => false,
         'start_time' => time()
-    );
+    ];
     
+    http_response_code(200);
     echo json_encode([
         'scanId' => $scanId,
-        'status' => 'started',
-        'debug' => [
-            'command' => $command,
-            'jarPath' => $jarPath,
-            'pid' => trim($pid)
-        ]
+        'status' => 'started'
     ]);
+    exit;
     
 } catch (Exception $e) {
+    http_response_code($e->getCode() ?: 500);
     echo json_encode([
         'error' => $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine()
+        'code' => $e->getCode() ?: 500
     ]);
+    exit;
 }
 ?>
