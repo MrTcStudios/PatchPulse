@@ -645,7 +645,6 @@ input {
 }
 
 /* Responsive adjustments */
-@media (max-width: 320px) {
     .scan-legal-line {
         font-size: 12px;
     }
@@ -657,9 +656,9 @@ input {
     .action-button {
         font-size: 14px;
     }
-}
 
-@media (min-width: 480px) {
+
+
     .auth-container {
         max-width: 440px;
         margin: 20px auto;
@@ -877,7 +876,7 @@ input {
     }
 
     /* For smaller mobile screens */
-    @media (max-width: 360px) {
+
         .terms-checkbox {
             width: 18px;
             height: 18px;
@@ -886,7 +885,7 @@ input {
         .terms-checkbox:checked::after {
             font-size: 14px;
         }
-    }
+
 
     .terms-container {
         padding: 20px 15px;
@@ -1227,7 +1226,6 @@ input {
     }
 
     /* Extra small devices (phones, 320px and under) */
-    @media (max-width: 320px) {
         .terms-container {
             padding: 15px 10px;
         }
@@ -1273,10 +1271,9 @@ input {
             bottom: 15px;
             right: 15px;
         }
-    }
+
 
     /* Small devices (phones, 321px to 375px) */
-    @media (min-width: 321px) and (max-width: 375px) {
         .terms-container {
             padding: 15px 12px;
         }
@@ -1292,10 +1289,9 @@ input {
         .terms-section p {
             font-size: 14px;
         }
-    }
+
 
     /* Medium devices (phones, 376px to 425px) */
-    @media (min-width: 376px) and (max-width: 425px) {
         .terms-container {
             padding: 18px 15px;
         }
@@ -1307,17 +1303,15 @@ input {
         .terms-section h2 {
             font-size: 18px;
         }
-    }
+
 
     /* Larger phones (426px to 483px) */
-    @media (min-width: 426px) and (max-width: 483px) {
         .terms-container {
             padding: 20px 18px;
         }
-    }
+
 
     /* Tablets and larger (484px and up) */
-    @media (min-width: 484px) {
         .terms-container {
             max-width: 500px;
             margin: 0 auto;
@@ -1348,7 +1342,7 @@ input {
         }
 
         .terms-section p {
-            font-size: 16px;
+            font-size: clamp(13px, 3vw, 15px);
             line-height: 1.7;
             margin-bottom: 15px;
         }
@@ -1362,9 +1356,9 @@ input {
         }
 
         .terms-section.acceptance p {
-            font-size: 16px;
+            font-size: clamp(13px, 3vw, 15px);
         }
-    }
+
 
     /* Fix for bulleted lists and improve their readability */
     .bullet-list {
@@ -1378,6 +1372,7 @@ input {
         padding-left: 15px;
         margin-bottom: 8px;
         line-height: 1.6;
+        font-size: clamp(12px, 4vw, 19px);
     }
 
     .bullet-list li::before {

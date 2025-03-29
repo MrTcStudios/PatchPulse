@@ -19,28 +19,21 @@
                 <span></span>
             </div>
 
-            <!-- Mobile Navigation -->
+            <!-- Mobile Navigation Menu -->
             <div class="mobile-nav">
                 <div class="nav-header">
-                    <img
-                        class="nav-logo"
-                        src="../images/PatchPulseLogo.svg"
-                        alt="PatchPulse Logo"
-                    />
-                    <div class="close-nav">×</div>
+                    <img class="nav-logo" src="PatchPulseLogo.svg" alt="Logo" />
                 </div>
-                <a href="https://mrtc.cc">Home</a>
+                <a href="homePage_mobile.html">Home</a>
                 <div class="mobile-dropdown">
-                    <div class="dropdown-header">Tool</div>
+                    <div class="dropdown-header">Tools</div>
                     <div class="dropdown-items">
-                        <a href="#">Fast Scan</a>
+                        <a href="https://google.com">Fast Scan</a>
                         <a href="#">Web Scan</a>
                         <a href="#">Port Scan</a>
-                        <a href="#">Custom Scan</a>
                     </div>
                 </div>
-                <a href="#">Contact Us</a>
-                <a href="../loginPage.php">Log In / Sign Up</a>
+                <a href="#" class="login-btn">Log In / Sign Up</a>
             </div>
 
             <!-- Header -->
@@ -287,7 +280,7 @@
                 const scrollTopButton = document.querySelector(".scroll-top");
 
                 // Show/hide scroll button based on scroll position
-                window.addEventListener("scroll", function () {
+                window.addEventListe ner("scroll", function () {
                     if (window.scrollY > 300) {
                         scrollTopButton.classList.add("visible");
                     } else {
