@@ -10,6 +10,24 @@ use PHPMailer\PHPMailer\Exception;
 
 require '../webhook/registerWebhook.php';
 
+
+
+
+function detectDevice() {
+    $userAgent = $_SERVER['HTTP_USER_AGENT'];
+    if (preg_match('/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i', $userAgent)) {
+        return "mobile";
+    }
+    return "desktop";
+}
+
+// Usa questa funzione per il reindirizzamento
+$deviceType = detectDevice();
+$_SESSION['deviceType'] = $deviceType; // salva in sessione se necessario
+
+
+
+
 $servername = "";
 $username = "";
 $password = "";
@@ -70,7 +88,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Verifica se l'email è valida
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 	$_SESSION['registration_message'] = "Errore: L'email inserita non e' valida.";
-        header("Location: ../registerPage.php");
+        if ($deviceType === "mobile") {
+            header("Location: ../registerPage_mobile.php");
+        } else {
+            header("Location: ../registerPage.php");
+        }
         exit();
     }
 
@@ -82,7 +104,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if ($result->num_rows > 0) {
          $_SESSION['registration_message'] = "Errore: L'email gia' registrata. Usa un'altra email.";
-         header("Location: ../registerPage.php");
+         if ($deviceType === "mobile") {
+            header("Location: ../registerPage_mobile.php");
+        } else {
+            header("Location: ../registerPage.php");
+        }
          exit();
     } else {
         // Cripta la password
@@ -127,16 +153,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 $mail->send();
 		$_SESSION['registration_message'] = "Controlla la tua email per confermare la registrazione.";
-                header("Location: ../registerPage.php");
+                if ($deviceType === "mobile") {
+            header("Location: ../registerPage_mobile.php");
+        } else {
+            header("Location: ../registerPage.php");
+        }
                 exit();
             } catch (Exception $e) {
 		$_SESSION['registration_message'] = "Errore nell'invio della' email di conferma: " . $mail->ErrorInfo;
-                header("Location: ../registerPage.php");
+                if ($deviceType === "mobile") {
+            header("Location: ../registerPage_mobile.php");
+        } else {
+            header("Location: ../registerPage.php");
+        }
                 exit();
             }
         } else {
 		$_SESSION['registration_message'] = "Errore: " . $stmt->error;
+            if ($deviceType === "mobile") {
+            header("Location: ../registerPage_mobile.php");
+        } else {
             header("Location: ../registerPage.php");
+        }
             exit();
         }
     }
