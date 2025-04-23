@@ -106,7 +106,7 @@
         <div class="footer">
             <p>&copy; <?php echo date("Y"); ?> PatchPulse. Tutti i diritti riservati.</p>
             <div class="footer-links">
-                <a href="https://mrtc.cc/PatchPulse/dataBase/unsubscribe.php?email=YOUR_EMAIL">Disiscriviti</a>
+                <a href="https://mrtc.cc/PatchPulse/dataBase/unscribe.php?email=YOUR_EMAIL">Disiscriviti</a>
                 <a href="https://mrtc.cc/PatchPulse/privacy">Privacy Policy</a>
             </div>
             <p>PatchPulse - Udine, Italia</p>

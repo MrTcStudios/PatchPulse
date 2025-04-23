@@ -52,7 +52,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $username = $_POST['username'] ?? '';
             $password = $_POST['password'] ?? '';
 
-            if ($username === 'PatchPulseAdmin' && ($password === $default_password || $password === $custom_password)) {
+            if ($username === '' && ($password === $default_password || $password === $custom_password)) {
                 $_SESSION['admin'] = true;
                 header("Location: dashboard.php");
                 exit;
