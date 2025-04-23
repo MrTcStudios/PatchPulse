@@ -70,13 +70,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-
-    $email = htmlspecialchars($_POST['EmailOfUser']);
-    $password = htmlspecialchars($_POST['PasswordOfUserUnCrypt']);
+    $email = filter_var(trim($_POST['EmailOfUser']), FILTER_SANITIZE_EMAIL);
+    $password = htmlspecialchars(trim($_POST['PasswordOfUserUnCrypt']), ENT_QUOTES, 'UTF-8');
 
     $stmt = $conn->prepare("SELECT id, name, password, is_confirmed FROM users WHERE email = ?");
     $stmt->bind_param("s", $email);
-
     $stmt->execute();
     $stmt->store_result();
 
@@ -84,67 +82,48 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->bind_result($user_id, $name, $hashed_password, $is_confirmed);
         $stmt->fetch();
 
-        // Verifica se l'account è confermato
         if (!$is_confirmed) {
-	    $_SESSION['login_message'] = "Account non confermato. Controlla la tua email per completare la registrazione.";
-            if ($deviceType === "mobile") {
-            header("Location: ../loginPage_mobile.php");
-        } else {
-            header("Location: ../loginPage.php");
-        }
+            $_SESSION['login_message'] = htmlspecialchars("Account non confermato. Controlla la tua email per completare la registrazione.", ENT_QUOTES, 'UTF-8');
+            header("Location: " . ($deviceType === "mobile" ? "../loginPage_mobile.php" : "../loginPage.php"));
             exit();
-        } 
-        // Verifica la password criptata
-        elseif (password_verify($password, $hashed_password)) {
+        } elseif (password_verify($password, $hashed_password)) {
             $_SESSION['user_id'] = $user_id;
             $_SESSION['email'] = $email;
             $_SESSION['name'] = $name;
 
             sendLoginWebhook($user_id, $name, $email);
 
-	    // Recupera l'indirizzo IP da Cloudflare
-        $user_ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'unknown IP';
-        if (!filter_var($user_ip, FILTER_VALIDATE_IP)) {
-            $user_ip = 'invalid IP';
-        }
+            $user_ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'unknown IP';
+            if (!filter_var($user_ip, FILTER_VALIDATE_IP)) {
+                $user_ip = 'invalid IP';
+            }
 
-        // Recupera il paese da Cloudflare
-        $user_country = $_SERVER['HTTP_CF_IPCOUNTRY'] ?? 'unknown country';
-        if (!preg_match('/^[A-Z]{2}$/', $user_country)) {
-            $user_country = 'invalid country';
-        }
+            $user_country = $_SERVER['HTTP_CF_IPCOUNTRY'] ?? 'unknown country';
+            if (!preg_match('/^[A-Z]{2}$/', $user_country)) {
+                $user_country = 'invalid country';
+            }
 
-        // Logga l'IP e il paese
-        error_log("User IP: " . $user_ip);
-        error_log("User Country: " . $user_country);
-	    
+            error_log("User IP: " . $user_ip);
+            error_log("User Country: " . $user_country);
 
-	    // Log dell'IP e login nel database
-        $stmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, ip_address) VALUES (?, 'Login successful', ?)");
-        $stmt->bind_param("is", $_SESSION['user_id'], $user_ip);
-        $stmt->execute();
+            
+            $log_stmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, ip_address) VALUES (?, 'Login successful', ?)");
+            $log_stmt->bind_param("is", $_SESSION['user_id'], $user_ip);
+            $log_stmt->execute();
+            $log_stmt->close();
 
-
-
-	    $_SESSION['login_message'] = "Login riuscito. Benvenuto, " . htmlspecialchars($name) . "!";
+            
+            $_SESSION['login_message'] = "Login riuscito. Benvenuto, " . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . "!";
             header("Location: https://mrtc.cc");
             exit();
         } else {
-	$_SESSION['login_message'] = "Credenziali errate. Password non corretta.";
-            if ($deviceType === "mobile") {
-            header("Location: ../loginPage_mobile.php");
-        } else {
-            header("Location: ../loginPage.php");
-        }
+            $_SESSION['login_message'] = htmlspecialchars("Credenziali errate. Password non corretta.", ENT_QUOTES, 'UTF-8');
+            header("Location: " . ($deviceType === "mobile" ? "../loginPage_mobile.php" : "../loginPage.php"));
             exit();
         }
     } else {
-	$_SESSION['login_message'] = "Credenziali errate. Utente non trovato.";
-        if ($deviceType === "mobile") {
-            header("Location: ../loginPage_mobile.php");
-        } else {
-            header("Location: ../loginPage.php");
-        }
+        $_SESSION['login_message'] = htmlspecialchars("Credenziali errate. Utente non trovato.", ENT_QUOTES, 'UTF-8');
+        header("Location: " . ($deviceType === "mobile" ? "../loginPage_mobile.php" : "../loginPage.php"));
         exit();
     }
 

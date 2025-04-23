@@ -80,49 +80,40 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $name = filter_var($_POST['NameOfUser'], FILTER_SANITIZE_STRING);
-    $email = filter_var($_POST['EmailOfUser'], FILTER_SANITIZE_EMAIL);
-    $password = htmlspecialchars($_POST['PasswordOfUserUnCrypt']);
+    $name = htmlspecialchars(trim($_POST['NameOfUser']), ENT_QUOTES, 'UTF-8'); 
+    $email = filter_var(trim($_POST['EmailOfUser']), FILTER_SANITIZE_EMAIL);
+    $password = htmlspecialchars(trim($_POST['PasswordOfUserUnCrypt']), ENT_QUOTES, 'UTF-8'); 
     $agree_terms = isset($_POST['AgreeTerms']) ? 1 : 0;
 
-    // Verifica se l'email è valida
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-	$_SESSION['registration_message'] = "Errore: L'email inserita non e' valida.";
-        if ($deviceType === "mobile") {
-            header("Location: ../registerPage_mobile.php");
-        } else {
-            header("Location: ../registerPage.php");
-        }
+        $_SESSION['registration_message'] = htmlspecialchars("Errore: L'email inserita non e' valida.", ENT_QUOTES, 'UTF-8'); 
+        header("Location: " . ($deviceType === "mobile" ? "../registerPage_mobile.php" : "../registerPage.php"));
         exit();
     }
 
-    // Verifica se l'email esiste già
     $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
+    if (!$stmt) {
+        $_SESSION['registration_message'] = htmlspecialchars("Errore interno. Riprova piu' tardi.", ENT_QUOTES, 'UTF-8');
+        header("Location: " . ($deviceType === "mobile" ? "../registerPage_mobile.php" : "../registerPage.php"));
+        exit();
+    }
+
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows > 0) {
-         $_SESSION['registration_message'] = "Errore: L'email gia' registrata. Usa un'altra email.";
-         if ($deviceType === "mobile") {
-            header("Location: ../registerPage_mobile.php");
-        } else {
-            header("Location: ../registerPage.php");
-        }
-         exit();
+        $_SESSION['registration_message'] = htmlspecialchars("Errore: L'email gia' registrata. Usa un'altra email.", ENT_QUOTES, 'UTF-8');
+        header("Location: " . ($deviceType === "mobile" ? "../registerPage_mobile.php" : "../registerPage.php"));
+        exit();
     } else {
-        // Cripta la password
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-
-        // Genera un token di conferma
         $confirmation_token = bin2hex(random_bytes(32));
 
-        // Inserisce l'utente nel database
         $stmt = $conn->prepare("INSERT INTO users (name, email, password, agree_terms, is_confirmed, confirmation_token) VALUES (?, ?, ?, ?, FALSE, ?)");
         $stmt->bind_param("sssis", $name, $email, $hashed_password, $agree_terms, $confirmation_token);
 
         if ($stmt->execute()) {
-
             sendDiscordWebhook($name, $email);
 
             ob_start();
@@ -152,29 +143,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $mail->Body    = $message;
 
                 $mail->send();
-		$_SESSION['registration_message'] = "Controlla la tua email per confermare la registrazione.";
-                if ($deviceType === "mobile") {
-            header("Location: ../registerPage_mobile.php");
-        } else {
-            header("Location: ../registerPage.php");
-        }
+
+                $_SESSION['registration_message'] = htmlspecialchars("Controlla la tua email per confermare la registrazione.", ENT_QUOTES, 'UTF-8');
+                header("Location: " . ($deviceType === "mobile" ? "../registerPage_mobile.php" : "../registerPage.php"));
                 exit();
             } catch (Exception $e) {
-		$_SESSION['registration_message'] = "Errore nell'invio della' email di conferma: " . $mail->ErrorInfo;
-                if ($deviceType === "mobile") {
-            header("Location: ../registerPage_mobile.php");
-        } else {
-            header("Location: ../registerPage.php");
-        }
+                $_SESSION['registration_message'] = htmlspecialchars("Errore nell'invio della email di conferma: " . $mail->ErrorInfo, ENT_QUOTES, 'UTF-8');
+                header("Location: " . ($deviceType === "mobile" ? "../registerPage_mobile.php" : "../registerPage.php"));
                 exit();
             }
         } else {
-		$_SESSION['registration_message'] = "Errore: " . $stmt->error;
-            if ($deviceType === "mobile") {
-            header("Location: ../registerPage_mobile.php");
-        } else {
-            header("Location: ../registerPage.php");
-        }
+            $_SESSION['registration_message'] = htmlspecialchars("Errore: " . $stmt->error, ENT_QUOTES, 'UTF-8');
+            header("Location: " . ($deviceType === "mobile" ? "../registerPage_mobile.php" : "../registerPage.php"));
             exit();
         }
     }
