@@ -1,0 +1,7 @@
+Contact: mailto:support@patchpulse.org
+Policy: https://patchpulse.org/policy/security-policy.php
+Acknowledgments: https://patchpulse.org/hall-of-fame.php
+Preferred-Languages: it, en
+Canonical: https://patchpulse.org/.well-known/security.txt
+Expires: 2027-04-05T00:00:00Z
+OpenBugBounty: https://openbugbounty.org/bugbounty/0xSpectreGG/

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PatchPulse - Accesso Negato</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1a1a1a;
+        }
+
+        .container {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .error-code {
+            font-size: 120px;
+            font-weight: bold;
+            margin: 0;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: pulse 2s infinite;
+        }
+
+        .message {
+            font-size: 24px;
+            margin: 1rem 0;
+            color: #666;
+        }
+
+        .description {
+            font-size: 18px;
+            margin: 1rem 0;
+            color: #888;
+        }
+
+        .home-button {
+            display: inline-block;
+            padding: 12px 24px;
+            margin-top: 20px;
+            background: linear-gradient(45deg, #4ecdc4, #45b7af);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: transform 0.2s;
+        }
+
+        .home-button:hover {
+            transform: translateY(-2px);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+
+        .lock-icon {
+            font-size: 64px;
+            margin: 20px 0;
+            animation: shake 0.5s ease-in-out infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg); }
+            75% { transform: rotate(5deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="lock-icon">🔒</div>
+        <h1 class="error-code">403</h1>
+        <h2 class="message">Accesso Negato</h2>
+        <p class="description">Non hai i permessi necessari per accedere a questa risorsa.</p>
+        <a href="/" class="home-button">Torna alla Home</a>
+    </div>
+</body>
+</html>
