@@ -20,6 +20,7 @@ if (empty($_SESSION['admin_csrf'])) {
 }
 $csrf = $_SESSION['admin_csrf'];
 
+// ── Helper: verifica CSRF ──
 function checkCsrf() {
     $token = $_POST['csrf_token'] ?? '';
     if (empty($token) || !isset($_SESSION['admin_csrf']) || !hash_equals($_SESSION['admin_csrf'], $token)) {
@@ -29,6 +30,7 @@ function checkCsrf() {
     }
 }
 
+// ── Helper: Cloudflare API ──
 function cloudflareApi($endpoint, $method = 'GET', $data = null) {
     $zoneId = getenv('CF_ZONE_ID');
     $apiToken = getenv('CF_API_TOKEN');
@@ -65,6 +67,7 @@ function cloudflareApi($endpoint, $method = 'GET', $data = null) {
     return $result;
 }
 
+// ── Gestione azioni POST ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     checkCsrf();
     $action = $_POST['action'];
@@ -159,6 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     exit;
 }
 
+// ── Dati per la pagina ──
 $users = [];
 $stmt = $conn->prepare("SELECT id, name, email FROM users ORDER BY id DESC LIMIT 20");
 if ($stmt) {
@@ -238,7 +242,7 @@ unset($_SESSION['admin_success'], $_SESSION['admin_error'], $_SESSION['sending_s
     <div class="card">
         <h2>Manutenzione</h2>
         <div class="btn-group">
-            <form method="post"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>"><input type="hidden" name="action" value="maintenance_on"><button type="submit" class="btn btn-danger" onclick="return confirm('Attivare manutenzione?')">Attiva Manutenzione</button></form>
+            <form method="post"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>"><input type="hidden" name="action" value="maintenance_on"><button type="submit" class="btn btn-danger" data-confirm="Attivare manutenzione?">Attiva Manutenzione</button></form>
             <form method="post"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>"><input type="hidden" name="action" value="maintenance_off"><button type="submit" class="btn btn-success">Disattiva Manutenzione</button></form>
         </div>
     </div>
@@ -247,7 +251,7 @@ unset($_SESSION['admin_success'], $_SESSION['admin_error'], $_SESSION['sending_s
     <div class="card">
         <h2>Protezione Cloudflare</h2>
         <div class="btn-group">
-            <form method="post"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>"><input type="hidden" name="action" value="under_attack_on"><button type="submit" class="btn btn-danger" onclick="return confirm('Attivare Under Attack mode?')">Under Attack ON</button></form>
+            <form method="post"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>"><input type="hidden" name="action" value="under_attack_on"><button type="submit" class="btn btn-danger" data-confirm="Attivare Under Attack mode?">Under Attack ON</button></form>
             <form method="post"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>"><input type="hidden" name="action" value="under_attack_off"><button type="submit" class="btn btn-success">Under Attack OFF</button></form>
         </div>
     </div>
@@ -261,7 +265,7 @@ unset($_SESSION['admin_success'], $_SESSION['admin_error'], $_SESSION['sending_s
             <input type="text" name="subject" required><br>
             <label>Messaggio:</label>
             <textarea name="message" rows="5" required style="max-width:100%"></textarea><br>
-            <button type="submit" class="btn btn-primary" onclick="return confirm('Inviare a tutti gli utenti?')">Invia Email</button>
+            <button type="submit" class="btn btn-primary" data-confirm="Inviare a tutti gli utenti?">Invia Email</button>
         </form>
     </div>
 
@@ -301,7 +305,7 @@ unset($_SESSION['admin_success'], $_SESSION['admin_error'], $_SESSION['sending_s
                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
                                 <input type="hidden" name="action" value="delete_user">
                                 <input type="hidden" name="user_id" value="<?= (int)$u['id'] ?>">
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Eliminare utente #<?= (int)$u['id'] ?>?')">Elimina</button>
+                                <button type="submit" class="btn btn-danger btn-sm" data-confirm="Eliminare utente #<?= (int)$u['id'] ?>?">Elimina</button>
                             </form>
                         </td>
                     </tr>
@@ -311,5 +315,6 @@ unset($_SESSION['admin_success'], $_SESSION['admin_error'], $_SESSION['sending_s
         </div>
     </div>
 </div>
+<script src="../script.js"></script>
 </body>
 </html>

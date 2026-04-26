@@ -701,11 +701,6 @@ include("config.php");
         <div class="footer-bottom"><p>&copy; <?= date("Y") ?> PatchPulse. | <a href="policy/privacy_policy.php">Privacy</a> | <a href="policy/terms&condition.php">Terms</a></p></div>
     </footer>
 </main>
-<script>
-const h=document.getElementById('hamburger'),s=document.getElementById('sidebar');
-h.addEventListener('click',()=>{h.classList.toggle('active');s.classList.toggle('open');});
-document.querySelectorAll('.nav-item').forEach(l=>l.addEventListener('click',()=>{if(window.innerWidth<=768){h.classList.remove('active');s.classList.remove('open');}}));
-document.querySelectorAll('.category-btn').forEach(btn=>{btn.addEventListener('click',function(e){e.preventDefault();const t=document.querySelector(this.getAttribute('href'));if(t){t.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.category-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');}});});
-</script>
+<script src="script.js"></script>
 </body>
 </html>

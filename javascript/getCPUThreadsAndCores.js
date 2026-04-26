@@ -1,18 +1,35 @@
+/**
+ * Mostra il numero di thread logici esposti dal browser.
+ *
+ * BUG corretto: il calcolo precedente faceva `Math.ceil(threads / 2)` per
+ * stimare i "core fisici" assumendo che TUTTE le CPU abbiano hyperthreading.
+ * È falso su molte CPU mobile, ARM e CPU low-end → introduceva un errore
+ * sistematico per metà degli utenti.
+ *
+ * Comportamento attuale: mostriamo i thread logici (dato preciso) e
+ * indichiamo che il numero di core fisici NON è esposto dal browser.
+ */
 export function getCPUThreadsAndCores() {
-    const cpuThreads = navigator.hardwareConcurrency ? navigator.hardwareConcurrency : "N/D";
-    const cpuCores = cpuThreads !== "N/D" ? Math.ceil(cpuThreads / 2) : "N/D";
-    const cpuThreadsElement = document.getElementById('cpuThreads');
-    const cpuCoresElement = document.getElementById('cpuCores');
+    const threadsEl = document.getElementById('cpuThreads');
+    const coresEl   = document.getElementById('cpuCores');
 
-    if (cpuThreadsElement) {
-        cpuThreadsElement.innerText = cpuThreads + " threads";
+    const logical = navigator.hardwareConcurrency;
+    const hasValue = typeof logical === 'number' && logical > 0;
+
+    if (threadsEl) {
+        threadsEl.innerText = hasValue
+            ? `${logical} thread logici`
+            : 'Non disponibile';
     } else {
-        console.error('Elemento con id "cpuThreads" non trovato.');
+        console.warn('Elemento con id "cpuThreads" non trovato.');
     }
 
-    if (cpuCoresElement) {
-        cpuCoresElement.innerText = cpuCores + " core (stima)";
+    if (coresEl) {
+        // Il browser non espone il numero di core fisici. Diciamolo.
+        coresEl.innerText = hasValue
+            ? 'Non esposto dal browser'
+            : 'Non disponibile';
     } else {
-        console.error('Elemento con id "cpuCores" non trovato.');
+        console.warn('Elemento con id "cpuCores" non trovato.');
     }
 }

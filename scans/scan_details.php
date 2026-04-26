@@ -68,11 +68,13 @@ $dr = $stmt->get_result();
 while ($row = $dr->fetch_assoc()) $details[] = $row;
 $stmt->close();
 
+// Helper
 function sv($val, $default = 'Unknown') {
     $v = htmlspecialchars($val ?: $default, ENT_QUOTES, 'UTF-8');
     return $v;
 }
 
+// Scan sections
 $sections = [
     'Privacy & Tracking' => [
         ['Cookies', $scan['cookiesEnabled'] ?? '', '🍪'],
@@ -275,14 +277,11 @@ $sections = [
         <div class="footer-grid">
             <div class="footer-col"><h4>PatchPulse</h4><p>Scanner di sicurezza gratuiti.</p></div>
             <div class="footer-col"><h4>Scanner</h4><a href="../browser-scan.php">Browser Scanner</a><a href="../VulnerabilityScanner.php">Vulnerability Scanner</a></div>
-            <div class="footer-col"><h4>Contatti</h4><p>support@mrtc.cc</p></div>
+            <div class="footer-col"><h4>Contatti</h4><p>support@patchpulse.org</p></div>
         </div>
         <div class="footer-bottom"><p>&copy; <?= date('Y') ?> PatchPulse. | <a href="../policy/privacy_policy.php">Privacy</a> | <a href="../policy/terms&condition.php">Terms</a> | <a href="../policy/security-policy.php">Security</a></p></div>
     </footer>
 </main>
-<script>
-const h=document.getElementById('hamburger'),s=document.getElementById('sidebar');
-h.addEventListener('click',()=>{h.classList.toggle('active');s.classList.toggle('open');});
-</script>
+<script src="../script.js"></script>
 </body>
 </html>

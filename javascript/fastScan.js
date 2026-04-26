@@ -46,6 +46,7 @@ import { detectAdBlock } from '../javascript/checkAdBlockEnabled.js';
 detectAdBlock();
 
 
+// Chiamata delle funzioni
 getPublicIpAddresses();
 checkWebRTC();
 checkJavaScriptStatus();

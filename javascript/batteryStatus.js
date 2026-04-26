@@ -1,42 +1,55 @@
+/**
+ * Recupera lo stato della batteria via Battery Status API.
+ *
+ * Modifiche:
+ *  - Firefox e Safari NON espongono `navigator.getBattery` da anni:
+ *    indichiamo "Non supportata" invece di lasciare un loading infinito.
+ *  - Aggiunto null check sull'elemento UI.
+ *  - I listener vengono registrati una sola volta (no leak).
+ */
 export async function getBatteryStatus() {
-    var statusDiv = document.getElementById('batteryStatus');
-    if (!statusDiv) return;
+    const el = document.getElementById('batteryStatus');
+    if (!el) return;
 
-    if (!navigator.getBattery) {
-        statusDiv.textContent = "Non supportata dal tuo browser";
-        statusDiv.classList.remove('loading');
+    if (typeof navigator === 'undefined' || typeof navigator.getBattery !== 'function') {
+        el.textContent = 'Non supportata dal browser';
+        el.classList.remove('loading');
         return;
     }
 
+    let battery;
     try {
-        var battery = await navigator.getBattery();
+        battery = await navigator.getBattery();
+    } catch (_) {
+        el.textContent = 'Non disponibile';
+        el.classList.remove('loading');
+        return;
+    }
 
-        function updateBatteryInfo() {
-            var level = Math.round(battery.level * 100);
-            var charging = battery.charging;
-            var chargingTime = battery.chargingTime;
-            var dischargingTime = battery.dischargingTime;
+    const render = () => {
+        const level = Math.round((battery.level || 0) * 100);
+        const charging = !!battery.charging;
 
-            var statusText = level + '% ';
-            statusText += charging ? '(In carica)' : '(Non in carica)';
+        let text = `${level}% ${charging ? '(In carica)' : '(Non in carica)'}`;
 
-            if (charging && chargingTime !== Infinity) {
-                statusText += ' - Carica completa in: ' + Math.round(chargingTime / 60) + ' min';
-            } else if (!charging && dischargingTime !== Infinity) {
-                statusText += ' - Scarica in: ' + Math.round(dischargingTime / 60) + ' min';
-            }
-
-            statusDiv.textContent = statusText;
-            statusDiv.classList.remove('loading');
+        if (charging
+            && Number.isFinite(battery.chargingTime)
+            && battery.chargingTime !== Infinity) {
+            text += ` — Carica completa in ${Math.round(battery.chargingTime / 60)} min`;
+        } else if (!charging
+            && Number.isFinite(battery.dischargingTime)
+            && battery.dischargingTime !== Infinity) {
+            text += ` — Scarica in ${Math.round(battery.dischargingTime / 60)} min`;
         }
 
-        updateBatteryInfo();
-        battery.addEventListener('chargingchange', updateBatteryInfo);
-        battery.addEventListener('levelchange', updateBatteryInfo);
-        battery.addEventListener('chargingtimechange', updateBatteryInfo);
-        battery.addEventListener('dischargingtimechange', updateBatteryInfo);
-    } catch (error) {
-        statusDiv.textContent = 'Non disponibile';
-        statusDiv.classList.remove('loading');
-    }
+        el.textContent = text;
+        el.classList.remove('loading');
+    };
+
+    render();
+
+    // Registriamo i listener una sola volta (idempotenza già garantita dalla
+    // semantica di `getBattery()` che restituisce sempre lo stesso oggetto).
+    const events = ['chargingchange', 'levelchange', 'chargingtimechange', 'dischargingtimechange'];
+    events.forEach(ev => battery.addEventListener(ev, render));
 }

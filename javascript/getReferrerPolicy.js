@@ -1,19 +1,33 @@
+/**
+ * Recupera la Referrer Policy attiva.
+ *
+ * Modifiche:
+ *  - Usa `document.referrerPolicy` (più affidabile) come prima fonte.
+ *    Riflette la policy effettiva, anche se impostata via header HTTP.
+ *  - Fallback: meta tag <meta name="referrer">.
+ *  - "no-referrer-when-downgrade" è il default browser → lo indichiamo.
+ */
 export function getReferrerPolicy() {
-    const metaTags = document.getElementsByTagName('meta');
-    let referrerPolicy = 'N/D';
-
-    for (let i = 0; i < metaTags.length; i++) {
-        if (metaTags[i].getAttribute('name') === 'referrer') {
-            referrerPolicy = metaTags[i].getAttribute('content');
-            break;
-        }
+    const el = document.getElementById('referrerPolicy');
+    if (!el) {
+        console.warn('Elemento con id "referrerPolicy" non trovato.');
+        return;
     }
 
-    const referrerPolicyElement = document.getElementById('referrerPolicy');
+    // 1) Prima fonte: la proprietà ufficiale del Document
+    let policy = (typeof document !== 'undefined' && document.referrerPolicy) || '';
 
-    if (referrerPolicyElement) {
-        referrerPolicyElement.innerText = referrerPolicy;
-    } else {
-        console.error('Elemento con id "referrerPolicy" non trovato.');
+    // 2) Fallback: meta tag (anche se document.referrerPolicy è quasi sempre presente)
+    if (!policy) {
+        const meta = document.querySelector('meta[name="referrer" i]');
+        if (meta) policy = meta.getAttribute('content') || '';
     }
+
+    if (!policy) {
+        // Default del browser quando non specificata
+        el.innerText = 'strict-origin-when-cross-origin (default)';
+        return;
+    }
+
+    el.innerText = policy;
 }

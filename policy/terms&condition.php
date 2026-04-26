@@ -100,9 +100,6 @@
         <p>Per domande sui presenti Termini: <strong>support@patchpulse.org</strong></p>
     </div>
 </main>
-<script>
-const h=document.getElementById('hamburger'),s=document.getElementById('sidebar');
-h.addEventListener('click',()=>{h.classList.toggle('active');s.classList.toggle('open');});
-</script>
+<script src="../script.js"></script>
 </body>
 </html>

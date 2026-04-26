@@ -1,16 +1,30 @@
+/**
+ * Verifica le politiche di tracciamento DNT / GPC.
+ *
+ * Modifiche:
+ *  - Aggiunto fallback su `window.top.doNotTrack` (alcuni Safari più vecchi).
+ *  - Gestione di tutti i valori validi del DNT ('1', 'yes', '0', 'unspecified').
+ *  - GPC ha precedenza su DNT nel report perché DNT è deprecato.
+ */
 export function checkDoNotTrack() {
-    var el = document.getElementById('doNotTrack');
+    const el = document.getElementById('doNotTrack');
     if (!el) return;
 
-    var dnt = navigator.doNotTrack === '1' || window.doNotTrack === '1';
-    var gpc = navigator.globalPrivacyControl === true;
+    const dntValue =
+        navigator.doNotTrack
+        ?? window.doNotTrack
+        ?? (window.top && window.top.doNotTrack)
+        ?? null;
 
-    if (gpc && dnt) {
-        el.innerText = 'Attivato (Do Not Track + Global Privacy Control)';
-    } else if (gpc) {
+    const dntActive = dntValue === '1' || dntValue === 'yes';
+    const gpcActive = navigator.globalPrivacyControl === true;
+
+    if (gpcActive && dntActive) {
+        el.innerText = 'Attivato (DNT + Global Privacy Control)';
+    } else if (gpcActive) {
         el.innerText = 'Attivato (Global Privacy Control)';
-    } else if (dnt) {
-        el.innerText = 'Attivato (Do Not Track — deprecato, molti siti lo ignorano)';
+    } else if (dntActive) {
+        el.innerText = 'Attivato (DNT — deprecato, molti siti lo ignorano)';
     } else {
         el.innerText = 'Disattivato';
     }

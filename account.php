@@ -24,6 +24,7 @@ $csrfToken = $_SESSION['csrf_token'];
 
 $user_id = (int)$_SESSION['user_id'];
 
+// Verifica utente esiste
 $stmt = $conn->prepare("SELECT id, name, email FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -40,6 +41,7 @@ $stmt->bind_result($uid, $userName, $userEmail);
 $stmt->fetch();
 $stmt->close();
 
+// Storage calc
 $stmt = $conn->prepare("
     SELECT id, cookiesEnabled, doNotTrack, browserFingerprinting,
         webrtcSupport, httpsOnly, adBlockEnabled, javascriptStatus,
@@ -71,6 +73,7 @@ $storage_percentage = min(100, round(($storage_used / $total_storage) * 100, 1))
 
 $stmt->close();
 
+// Messages
 $msg_password = $_SESSION['password_change_message'] ?? '';
 $msg_email = $_SESSION['email_change_message'] ?? '';
 $msg_delete = $_SESSION['account_delete_message'] ?? '';
@@ -411,12 +414,12 @@ unset($_SESSION['password_change_message'], $_SESSION['email_change_message'], $
                 <div class="danger-grid">
                     <form action="dataBase/delete_all_logs.php" method="post">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
-                        <button type="submit" class="acc-btn danger" onclick="return confirm('Sei sicuro di voler eliminare tutti i log e le scansioni?')">Elimina Tutti i Dati</button>
+                        <button type="submit" class="acc-btn danger" data-confirm="Sei sicuro di voler eliminare tutti i log e le scansioni?">Elimina Tutti i Dati</button>
                     </form>
                     <form action="dataBase/delete_account.php" method="post">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                         <input type="password" class="acc-input" name="current_password" placeholder="Password per confermare" required>
-                        <button type="submit" class="acc-btn danger" onclick="return confirm('ATTENZIONE: il tuo account verrà eliminato permanentemente. Continuare?')">Elimina Account</button>
+                        <button type="submit" class="acc-btn danger" data-confirm="ATTENZIONE: il tuo account verrà eliminato permanentemente. Continuare?">Elimina Account</button>
                     </form>
                 </div>
             </div>
@@ -441,11 +444,6 @@ unset($_SESSION['password_change_message'], $_SESSION['email_change_message'], $
     </footer>
 </main>
 
-<script>
-const hamburger = document.getElementById('hamburger');
-const sidebar = document.getElementById('sidebar');
-hamburger.addEventListener('click', () => { hamburger.classList.toggle('active'); sidebar.classList.toggle('open'); });
-document.querySelectorAll('.nav-item').forEach(l => l.addEventListener('click', () => { if(window.innerWidth<=768){hamburger.classList.remove('active');sidebar.classList.remove('open');} }));
-</script>
+<script src="script.js"></script>
 </body>
 </html>

@@ -11,11 +11,13 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Redirect se già loggato (no open redirect via HTTP_REFERER)
 if (isset($_SESSION['user_id'])) {
     header("Location: home.php");
     exit();
 }
 
+// Genera CSRF token se non esiste
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -118,7 +120,7 @@ $csrfToken = $_SESSION['csrf_token'];
                 <label for="PasswordOfUserUnCrypt">Password</label>
                 <div class="password-toggle">
                     <input type="password" id="PasswordOfUserUnCrypt" name="PasswordOfUserUnCrypt" placeholder="Inserisci la tua password" required>
-                    <button type="button" onclick="togglePassword('PasswordOfUserUnCrypt')">👁️</button>
+                    <button type="button" data-toggle-password="PasswordOfUserUnCrypt">👁️</button>
                 </div>
             </div>
             <div class="remember-me">
@@ -128,7 +130,7 @@ $csrfToken = $_SESSION['csrf_token'];
             <div class="cf-turnstile" data-sitekey="0x4AAAAAACxRHR_H4N6K4-b5" data-theme="light"></div>
             <button type="submit" class="form-submit">Accedi</button>
             <div class="forgot-password">
-                <a href="#" onclick="showForgotPassword()">Hai dimenticato la password?</a>
+                <a href="#" data-action="show-forgot">Hai dimenticato la password?</a>
             </div>
         </form>
 
@@ -147,14 +149,14 @@ $csrfToken = $_SESSION['csrf_token'];
                 <label for="PasswordOfUserUnCryptReg">Password</label>
                 <div class="password-toggle">
                     <input type="password" id="PasswordOfUserUnCryptReg" name="PasswordOfUserUnCrypt" placeholder="Crea una password" required>
-                    <button type="button" onclick="togglePassword('PasswordOfUserUnCryptReg')">👁️</button>
+                    <button type="button" data-toggle-password="PasswordOfUserUnCryptReg">👁️</button>
                 </div>
             </div>
             <div class="form-group">
                 <label for="confirm-password">Conferma Password</label>
                 <div class="password-toggle">
                     <input type="password" id="confirm-password" name="confirm-password" placeholder="Conferma la password" required>
-                    <button type="button" onclick="togglePassword('confirm-password')">👁️</button>
+                    <button type="button" data-toggle-password="confirm-password">👁️</button>
                 </div>
             </div>
             <div class="terms-container">
@@ -182,7 +184,7 @@ $csrfToken = $_SESSION['csrf_token'];
         <!-- Form Toggle -->
         <div class="form-toggle">
             <p id="toggle-text">Non hai un account?</p>
-            <button type="button" id="toggle-btn" onclick="toggleForm()">Registrati qui</button>
+            <button type="button" id="toggle-btn">Registrati qui</button>
         </div>
 
         <!-- Back to Home -->
@@ -193,120 +195,6 @@ $csrfToken = $_SESSION['csrf_token'];
     </div>
 </main>
 
-<script>
-
-        let isLoginForm = true;
-
-        function toggleForm() {
-            const loginForm = document.getElementById('login-form');
-            const registerForm = document.getElementById('register-form');
-            const forgotForm = document.getElementById('forgot-form');
-            const formTitle = document.getElementById('form-title');
-            const formSubtitle = document.getElementById('form-subtitle');
-            const toggleText = document.getElementById('toggle-text');
-            const toggleBtn = document.getElementById('toggle-btn');
-
-            forgotForm.classList.remove('active');
-
-            if (isLoginForm) {
-                loginForm.classList.remove('active');
-                registerForm.classList.add('active');
-                formTitle.textContent = 'Registrati';
-                formSubtitle.textContent = 'Crea il tuo account PatchPulse';
-                toggleText.textContent = 'Hai già un account?';
-                toggleBtn.textContent = 'Accedi qui';
-                isLoginForm = false;
-            } else {
-                registerForm.classList.remove('active');
-                loginForm.classList.add('active');
-                formTitle.textContent = 'Accedi';
-                formSubtitle.textContent = 'Benvenuto di nuovo su PatchPulse';
-                toggleText.textContent = 'Non hai un account?';
-                toggleBtn.textContent = 'Registrati qui';
-                isLoginForm = true;
-            }
-        }
-
-        function showForgotPassword() {
-            const loginForm = document.getElementById('login-form');
-            const registerForm = document.getElementById('register-form');
-            const forgotForm = document.getElementById('forgot-form');
-            const formTitle = document.getElementById('form-title');
-            const formSubtitle = document.getElementById('form-subtitle');
-            const toggleText = document.getElementById('toggle-text');
-            const toggleBtn = document.getElementById('toggle-btn');
-
-            loginForm.classList.remove('active');
-            registerForm.classList.remove('active');
-            forgotForm.classList.add('active');
-
-            formTitle.textContent = 'Recupera Password';
-            formSubtitle.textContent = 'Inserisci la tua email per ricevere il link di reset';
-            toggleText.textContent = 'Ricordi la password?';
-            toggleBtn.textContent = 'Torna al login';
-
-            toggleBtn.onclick = function() {
-                forgotForm.classList.remove('active');
-                loginForm.classList.add('active');
-                formTitle.textContent = 'Accedi';
-                formSubtitle.textContent = 'Benvenuto di nuovo su PatchPulse';
-                toggleText.textContent = 'Non hai un account?';
-                toggleBtn.textContent = 'Registrati qui';
-                toggleBtn.onclick = toggleForm;
-                isLoginForm = true;
-            };
-        }
-
-        function togglePassword(fieldId) {
-            const field = document.getElementById(fieldId);
-            const button = field.nextElementSibling;
-            if (field.type === 'password') {
-                field.type = 'text';
-                button.textContent = '🙈';
-            } else {
-                field.type = 'password';
-                button.textContent = '👁️';
-            }
-        }
-
-        document.getElementById('register-form').addEventListener('submit', function(e) {
-            const password = document.getElementById('PasswordOfUserUnCryptReg').value;
-            const confirmPassword = document.getElementById('confirm-password').value;
-            if (password !== confirmPassword) {
-                e.preventDefault();
-                alert('Le password non coincidono!');
-                return false;
-            }
-            if (password.length < 8) {
-                e.preventDefault();
-                alert('La password deve avere almeno 8 caratteri.');
-                return false;
-            }
-            if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
-                e.preventDefault();
-                alert('La password deve contenere almeno una maiuscola, una minuscola e un numero.');
-                return false;
-            }
-        });
-
-        const hamburger = document.getElementById('hamburger');
-        const sidebar = document.getElementById('sidebar');
-        hamburger.addEventListener('click', () => {
-            hamburger.classList.toggle('active');
-            sidebar.classList.toggle('open');
-        });
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => {
-                hamburger.classList.remove('active');
-                sidebar.classList.remove('open');
-            });
-        });
-
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('action') === 'register' || window.location.hash === '#register') {
-            toggleForm();
-        }
-
-</script>
+<script src="script.js"></script>
 </body>
 </html>

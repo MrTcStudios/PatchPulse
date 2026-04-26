@@ -1,59 +1,69 @@
+/**
+ * Verifica il supporto a WebRTC.
+ *
+ * Modifica chiave: il check originale dichiarava "Disabilitato" se non
+ * arrivava un ICE candidate, ma WebRTC potrebbe essere SUPPORTATO e solo
+ * bloccato dal firewall/VPN. Distinguiamo:
+ *  - "Non supportato": l'API RTCPeerConnection non esiste.
+ *  - "Abilitato": almeno un candidate ricevuto dal server STUN.
+ *  - "Limitato": API presente ma niente candidate (firewall / WebRTC disabilitato lato browser).
+ *
+ * Sicurezza: usiamo lo STUN server pubblico di Google solo per testing dell'IP
+ * pubblico. Se non si vuole nessuna chiamata esterna, si può rimuovere
+ * `iceServers` e WebRTC tornerà comunque candidate locali (host).
+ */
 export function checkWebRTC() {
-    let isWebRTCAvailable = false;
+    return new Promise((resolve) => {
+        const el = document.getElementById('webrtcSupport');
+        const setText = (txt) => { if (el) el.innerText = txt; };
 
-    return new Promise(resolve => {
-        const RTCPeer =
-            window.RTCPeerConnection ||
-            window.webkitRTCPeerConnection ||
-            window.mozRTCPeerConnection;
+        const RTCPeer = window.RTCPeerConnection
+            || window.webkitRTCPeerConnection
+            || window.mozRTCPeerConnection;
 
         if (!RTCPeer) {
-            updateStatus(false);
+            setText('Non supportato');
             return resolve(false);
         }
 
-        const pc = new RTCPeer({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+        let pc;
+        try {
+            pc = new RTCPeer({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+        } catch (_) {
+            setText('Non supportato');
+            return resolve(false);
+        }
+
         let gotCandidate = false;
+        let resolved = false;
 
-        pc.createDataChannel("");
-
-        pc.onicecandidate = event => {
-            if (event && event.candidate) {
-                gotCandidate = true;
-            }
+        const finish = (label, value) => {
+            if (resolved) return;
+            resolved = true;
+            try { pc.close(); } catch (_) {}
+            setText(label);
+            resolve(value);
         };
 
-        pc.onicegatheringstatechange = () => {
-            if (pc.iceGatheringState === "complete") {
-                pc.close();
-                isWebRTCAvailable = gotCandidate;
-                updateStatus(isWebRTCAvailable);
-                resolve(isWebRTCAvailable);
-            }
-        };
+        try {
+            pc.createDataChannel('probe');
+            pc.onicecandidate = (e) => { if (e && e.candidate) gotCandidate = true; };
+            pc.onicegatheringstatechange = () => {
+                if (pc.iceGatheringState === 'complete') {
+                    finish(gotCandidate ? 'Abilitato' : 'Limitato (API attiva, niente candidate)', gotCandidate);
+                }
+            };
+            pc.createOffer()
+                .then((offer) => pc.setLocalDescription(offer))
+                .catch(() => finish('Limitato (errore offerta)', false));
+        } catch (_) {
+            return finish('Limitato (errore inizializzazione)', false);
+        }
 
-        pc.createOffer()
-            .then(offer => pc.setLocalDescription(offer))
-            .catch(() => {
-                updateStatus(false);
-                resolve(false);
-            });
-
+        // Timeout di sicurezza
         setTimeout(() => {
-            if (pc.iceGatheringState !== "complete") {
-                pc.close();
-                updateStatus(gotCandidate);
-                resolve(gotCandidate);
-            }
+            if (resolved) return;
+            finish(gotCandidate ? 'Abilitato' : 'Limitato (timeout ICE)', gotCandidate);
         }, 3000);
     });
-
-    function updateStatus(state) {
-        const webrtcSupportElement = document.getElementById('webrtcSupport');
-        if (webrtcSupportElement) {
-            webrtcSupportElement.innerText = state ? 'Abilitato' : 'Disabilitato';
-        } else {
-            console.error('Elemento con id "webrtcSupport" non trovato.');
-        }
-    }
 }

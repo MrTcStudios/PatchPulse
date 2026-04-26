@@ -1,3 +1,14 @@
+/**
+ * Rileva sistema operativo + versione + architettura.
+ * Bug corretti rispetto alla versione precedente:
+ *  - L'architettura per Windows ritornava sempre '64-bit' (ternario tautologico).
+ *  - Lo "stimato" basato sulla risoluzione era arbitrario.
+ *
+ * Ora:
+ *  - Si dichiara "64-bit" SOLO quando ci sono indicatori chiari nell'UA.
+ *  - Si usa userAgentData.getHighEntropyValues quando disponibile (più affidabile).
+ *  - Quando incerto, si dichiara "Sconosciuta" invece di indovinare.
+ */
 export async function checkOSVersion(elementId = 'osVersion') {
     const el = document.getElementById(elementId);
     if (!el) {
@@ -8,174 +19,131 @@ export async function checkOSVersion(elementId = 'osVersion') {
     const ua = navigator.userAgent || '';
     const platform = navigator.platform || '';
 
-    const getArchitecture = (userAgent, platformString) => {
-        if (/\b(?:Win64|WOW64|x86_64|x64|amd64|arm64|aarch64)\b/i.test(userAgent)) {
-            return '64-bit';
-        }
-        
-        if (/\b(?:Win64|x86_64|x64|amd64|arm64|aarch64)\b/i.test(platformString)) {
-            return '64-bit';
-        }
-        
-        if (/Win32/i.test(platformString)) {
-            if (/Windows NT.*(?:Win64|WOW64)/i.test(userAgent)) {
-                return '64-bit';
-            }
-            if (/Windows NT (?:6\.[2-9]|[1-9][0-9]\.)/i.test(userAgent)) {
-                return navigator.maxTouchPoints > 0 ? '64-bit' : '64-bit';
-            }
-        }
-        
-        if (/Linux.*x86_64/i.test(userAgent) || /Linux.*amd64/i.test(userAgent)) {
-            return '64-bit';
-        }
-        
-        return '32-bit';
+    /**
+     * Architettura: solo segnali concreti, niente "stima".
+     */
+    const detectArch = (uaStr, platStr) => {
+        const sig64 = /\b(?:Win64|WOW64|x86_64|x64|amd64|arm64|aarch64)\b/i;
+        if (sig64.test(uaStr) || sig64.test(platStr)) return '64-bit';
+        // Solo i Mac Intel storici e Linux i686 sono 32-bit espliciti
+        if (/i[3-6]86/.test(uaStr) || /Linux i\d86/i.test(platStr)) return '32-bit';
+        // Win32 nell'UA non significa "32-bit": è semplicemente l'API Windows.
+        // Quindi non concludiamo niente se non abbiamo indicatori 64-bit.
+        return null;
     };
 
-    const parseFromUA = (uaString) => {
-        let name = undefined;
-        let version = undefined;
+    const parseFromUA = (uaStr) => {
+        let name, version;
 
-        const winMatch = uaString.match(/Windows NT ([0-9._]+)/i);
+        // Windows
+        const winMatch = uaStr.match(/Windows NT ([0-9._]+)/i);
         if (winMatch) {
             name = 'Windows';
-            const ntVersion = winMatch[1].replace(/_/g, '.');
-            
-            const windowsVersions = {
-                '10.0': '11/10',
-                '6.3': '8.1',
-                '6.2': '8',
-                '6.1': '7',
-                '6.0': 'Vista',
-                '5.2': 'XP x64',
-                '5.1': 'XP',
-                '5.0': '2000'
+            const nt = winMatch[1].replace(/_/g, '.');
+            const map = {
+                '10.0': '10/11', '6.3': '8.1', '6.2': '8',
+                '6.1': '7', '6.0': 'Vista', '5.2': 'XP x64',
+                '5.1': 'XP', '5.0': '2000'
             };
-            
-            version = windowsVersions[ntVersion] || `NT ${ntVersion}`;
-            
-            if (ntVersion === '10.0') {
-                const buildMatch = uaString.match(/Windows NT 10\.0.*?(\d{5,})/);
-                if (buildMatch) {
-                    const build = parseInt(buildMatch[1]);
-                    if (build >= 22000) {
-                        version = '11';
-                    } else {
-                        version = '10';
-                    }
-                } else {
-                    version = '10/11';
-                }
-            }
+            version = map[nt] || `NT ${nt}`;
         }
 
-        const macMatch = uaString.match(/Mac OS X ([0-9_\.]+)/i);
+        // macOS
+        const macMatch = uaStr.match(/Mac OS X ([0-9_\.]+)/i);
         if (macMatch) {
             name = 'macOS';
             version = macMatch[1].replace(/_/g, '.');
         }
 
-        const iosMatch = uaString.match(/(iPhone|iPad|iPod).*?(?:iPhone )?OS\s([0-9_]+)/i);
+        // iOS / iPadOS
+        const iosMatch = uaStr.match(/(iPhone|iPad|iPod).*?OS\s([0-9_]+)/i);
         if (iosMatch) {
-            const device = iosMatch[1];
-            name = device === 'iPad' ? 'iPadOS' : 'iOS';
+            name = iosMatch[1] === 'iPad' ? 'iPadOS' : 'iOS';
             version = iosMatch[2].replace(/_/g, '.');
         }
 
-        const androidMatch = uaString.match(/Android\s+([0-9\.]+)/i);
+        // Android
+        const androidMatch = uaStr.match(/Android\s+([0-9\.]+)/i);
         if (androidMatch) {
             name = 'Android';
             version = androidMatch[1];
         }
 
-        if (!name && /Linux/i.test(uaString)) {
-            name = 'Linux';
-            const distroMatch = uaString.match(/(Ubuntu|Debian|Fedora|CentOS|RedHat|SUSE)/i);
-            if (distroMatch) {
-                name = `Linux (${distroMatch[1]})`;
-            }
-        }
-
-        if (/CrOS/i.test(uaString)) {
+        // Chrome OS
+        if (/CrOS/i.test(uaStr)) {
             name = 'Chrome OS';
-            const crosMatch = uaString.match(/CrOS [^\s]+ ([0-9.]+)/);
-            if (crosMatch) {
-                version = crosMatch[1];
-            }
+            const m = uaStr.match(/CrOS [^\s]+ ([0-9.]+)/);
+            if (m) version = m[1];
         }
 
+        // Linux generico (solo se non già identificato)
+        if (!name && /Linux/i.test(uaStr)) {
+            name = 'Linux';
+            const distro = uaStr.match(/(Ubuntu|Debian|Fedora|CentOS|RedHat|SUSE)/i);
+            if (distro) name = `Linux (${distro[1]})`;
+        }
+
+        // Fallback su platform
         if (!name) {
-            const platformMap = {
-                'Win32': 'Windows',
-                'Win64': 'Windows',
-                'MacIntel': 'macOS',
-                'MacPPC': 'macOS (PowerPC)',
-                'Linux i686': 'Linux',
-                'Linux x86_64': 'Linux',
-                'iPhone': 'iOS',
-                'iPad': 'iPadOS'
+            const map = {
+                'Win32': 'Windows', 'Win64': 'Windows',
+                'MacIntel': 'macOS', 'MacPPC': 'macOS (PowerPC)',
+                'Linux i686': 'Linux', 'Linux x86_64': 'Linux',
+                'iPhone': 'iOS', 'iPad': 'iPadOS'
             };
-            
-            name = platformMap[platform] || platform || 'Sconosciuto';
+            name = map[platform] || platform || 'Sconosciuto';
         }
 
-        const arch = getArchitecture(uaString, platform);
-
+        const arch = detectArch(uaStr, platform);
         return { name, version, arch };
     };
 
     const formatOutput = ({ name, version, arch }) => {
-        let result = name || 'Sistema Sconosciuto';
-        if (version) {
-            result += ` ${version}`;
-        }
-        if (arch) {
-            result += ` (${arch})`;
-        }
-        return result;
+        let out = name || 'Sistema sconosciuto';
+        if (version) out += ` ${version}`;
+        if (arch)    out += ` (${arch})`;
+        return out;
     };
 
+    // 1) Risultato sincrono dall'UA
     const initial = parseFromUA(ua);
     el.textContent = formatOutput(initial);
 
-    if (navigator.userAgentData && typeof navigator.userAgentData.getHighEntropyValues === 'function') {
+    // 2) Affina con Client Hints (richiede HTTPS / Secure Context)
+    if (
+        navigator.userAgentData &&
+        typeof navigator.userAgentData.getHighEntropyValues === 'function'
+    ) {
         try {
-            const hints = ['platform', 'platformVersion', 'architecture', 'bitness', 'model', 'uaFullVersion'];
-            const high = await navigator.userAgentData.getHighEntropyValues(hints);
-            
+            const high = await navigator.userAgentData.getHighEntropyValues([
+                'platform', 'platformVersion', 'architecture', 'bitness'
+            ]);
+
             let name = high.platform || initial.name;
             let version = high.platformVersion || initial.version;
-            
             let arch = initial.arch;
-            if (high.bitness) {
-                arch = high.bitness === '64' ? '64-bit' : high.bitness === '32' ? '32-bit' : high.bitness + '-bit';
+
+            if (high.bitness === '64' || high.bitness === '32') {
+                arch = `${high.bitness}-bit`;
             } else if (high.architecture) {
-                arch = /64/.test(high.architecture) ? '64-bit' : '32-bit';
+                if (/64/.test(high.architecture)) arch = '64-bit';
+                else if (/86|32/.test(high.architecture)) arch = '32-bit';
             }
 
+            // Distinzione Win10/Win11 via build number (richiede platformVersion)
             if (name === 'Windows' && high.platformVersion) {
-                const versionParts = high.platformVersion.split('.');
-                if (versionParts.length >= 3) {
-                    const build = parseInt(versionParts[2]);
-                    if (build >= 22000) {
-                        version = '11';
-                    } else if (versionParts[0] === '10') {
-                        version = '10';
-                    }
+                const parts = high.platformVersion.split('.');
+                const major = parseInt(parts[0], 10);
+                if (Number.isFinite(major)) {
+                    // Da platformVersion: major ≥ 13 = Win11, altrimenti Win10
+                    // (cfr. https://learn.microsoft.com/microsoft-edge/web-platform/how-to-detect-win11)
+                    version = major >= 13 ? '11' : '10';
                 }
             }
-            
-            el.textContent = formatOutput({ name, version, arch });
-            
-        } catch (err) {
-            console.info('userAgentData.getHighEntropyValues non disponibile:', err.message);
-        }
-    }
 
-    if (initial.name === 'Windows' && initial.arch === '32-bit' && screen.width >= 1920) {
-        console.info('Sistema Windows con risoluzione alta - probabile 64-bit');
-        const updated = { ...initial, arch: '64-bit (stimato)' };
-        el.textContent = formatOutput(updated);
+            el.textContent = formatOutput({ name, version, arch });
+        } catch (err) {
+            console.debug('userAgentData non disponibile:', err && err.message);
+        }
     }
 }
