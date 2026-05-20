@@ -9,6 +9,7 @@ ini_set('session.use_strict_mode', 1);
 ini_set('session.use_only_cookies', 1);
 
 include("../config.php");
+require_once __DIR__ . "/../lang/lang.php";
 
 $encKey = getenv('ENC_KEY');
 if (empty($encKey)) {
@@ -69,14 +70,27 @@ while ($row = $dr->fetch_assoc()) $details[] = $row;
 $stmt->close();
 
 // Helper
-function sv($val, $default = 'Unknown') {
+function sv($val, $default = null) {
+    if ($default === null) $default = t('sd.unknown', false);
     $v = htmlspecialchars($val ?: $default, ENT_QUOTES, 'UTF-8');
     return $v;
 }
 
+// Robust check that a stored scan value matches a "yes/enabled/active" answer,
+// regardless of the language the user was using when they ran the scan.
+// We never compare to a single localized string — we accept the IT *and* EN
+// equivalents because historical scans may be saved in either language.
+function sd_matches(string $value, array $tokens): bool {
+    $value = trim(mb_strtolower($value));
+    foreach ($tokens as $t) {
+        if ($value === mb_strtolower($t)) return true;
+    }
+    return false;
+}
+
 // Scan sections
 $sections = [
-    'Privacy & Tracking' => [
+    t('sd.section.privacy', false) => [
         ['Cookies', $scan['cookiesEnabled'] ?? '', '🍪'],
         ['Do Not Track', $scan['doNotTrack'] ?? '', '🚫'],
         ['Browser Fingerprinting', $scan['browserFingerprinting'] ?? '', '🕵️'],
@@ -86,7 +100,7 @@ $sections = [
         ['Incognito Mode', $scan['incognitoMode'] ?? '', '👁️'],
         ['Referrer Policy', $scan['referrerPolicy'] ?? '', '📋'],
     ],
-    'Browser & System' => [
+    t('sd.section.browser_sys', false) => [
         ['Browser', $scan['browserType'] ?? '', '🌍'],
         ['Version', $scan['browserVersion'] ?? '', '📌'],
         ['Language', $scan['browserLanguage'] ?? '', '🗣️'],
@@ -94,7 +108,7 @@ $sections = [
         ['JavaScript', $scan['javascriptStatus'] ?? '', '⚙️'],
         ['Developer Mode', $scan['developerMode'] ?? '', '🔧'],
     ],
-    'Hardware' => [
+    t('sd.section.hardware', false) => [
         ['CPU Cores', $scan['cpuCores'] ?? '', '🧠'],
         ['CPU Threads', $scan['cpuThreads'] ?? '', '🧵'],
         ['Device Memory', $scan['deviceMemory'] ?? '', '💾'],
@@ -104,7 +118,7 @@ $sections = [
         ['Touch Support', $scan['touchSupport'] ?? '', '👆'],
         ['Battery Status', $scan['batteryStatus'] ?? '', '🔋'],
     ],
-    'Web APIs' => [
+    t('sd.section.web_apis', false) => [
         ['WebGL Fingerprinting', $scan['webglFingerprinting'] ?? '', '🖼️'],
         ['WebAssembly', $scan['webAssemblySupport'] ?? '', '⚡'],
         ['Web Workers', $scan['webWorkersSupported'] ?? '', '👷'],
@@ -114,7 +128,7 @@ $sections = [
         ['Geolocation', $scan['geolocationInfo'] ?? '', '📍'],
         ['Sensors', $scan['sensorsSupported'] ?? '', '📡'],
     ],
-    'Network' => [
+    t('sd.section.network', false) => [
         ['Public IPv4', $scan['publicIpv4'] ?? '', '🌐'],
         ['Public IPv6', $scan['publicIpv6'] ?? '', '🌐'],
         ['Security Protocols', $scan['securityProtocols'] ?? '', '🔐'],
@@ -123,11 +137,11 @@ $sections = [
 ];
 ?>
 <!DOCTYPE html>
-<html lang="it">
+<html lang="<?= htmlspecialchars(pp_lang_current(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatchPulse - Scan Details</title>
+    <title><?= t('sd.title_tag') ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
@@ -186,27 +200,28 @@ $sections = [
     <div class="sidebar-top">
         <a href="../home.php" class="logo"><img src="../images/PatchPulseLogo.svg" alt="PatchPulse" style="width:35px;height:35px;object-fit:contain;">PatchPulse</a>
         <div style="display:flex;align-items:center;gap:0.5rem">
-            <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+            <button class="hamburger" id="hamburger" aria-label="<?= t('nav.menu') ?>"><span></span><span></span><span></span></button>
         </div>
     </div>
     <div class="nav-section">
-        <a href="../home.php" class="nav-item"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>Homepage</a>
-        <a href="../home.php#servizi" class="nav-item"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>Applications</a>
+        <a href="../home.php" class="nav-item"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span><?= t('nav.homepage') ?></a>
+        <a href="../home.php#servizi" class="nav-item"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span><?= t('nav.applications') ?></a>
     </div>
     <div class="sidebar-bottom">
-        <?php if (isset($_SESSION['user_id'])): ?><a href="../account.php" class="nav-item active"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>Area Personale</a><?php endif; ?>
+        <?php if (isset($_SESSION['user_id'])): ?><a href="../account.php" class="nav-item active"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><?= t('nav.account') ?></a><?php endif; ?>
+        <a href="../settings.php" class="nav-item"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></span><?= t('nav.settings') ?></a>
     </div>
 </aside>
 <main class="main-wrapper" id="main">
     <div class="page-header">
-        <a href="../account.php" class="page-header-back"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Torna all'Account</a>
-        <p class="page-header-eyebrow">Browser Scan</p>
-        <h1 class="page-header-title">Dettagli Scansione #<?= (int)$scan['id'] ?></h1>
+        <a href="../account.php" class="page-header-back"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> <?= t('sd.back_account') ?></a>
+        <p class="page-header-eyebrow"><?= t('sd.eyebrow') ?></p>
+        <h1 class="page-header-title"><?= htmlspecialchars(str_replace('{0}', (string)(int)$scan['id'], t('sd.title', false)), ENT_QUOTES, 'UTF-8') ?></h1>
     </div>
     <div class="scanner-section">
         <div class="scan-meta">
             <span>📅 <?= htmlspecialchars($scan['created_at']) ?></span>
-            <span>🆔 Scan #<?= (int)$scan['id'] ?></span>
+            <span>🆔 <?= htmlspecialchars(str_replace('{0}', (string)(int)$scan['id'], t('sd.scan_no', false)), ENT_QUOTES, 'UTF-8') ?></span>
         </div>
 
         <?php foreach ($sections as $title => $items): ?>
@@ -228,9 +243,9 @@ $sections = [
 
         <?php if (count($details) > 0): ?>
         <div class="detail-section">
-            <h3>Risultati Dettagliati</h3>
+            <h3><?= t('sd.detailed_results') ?></h3>
             <table class="details-table">
-                <thead><tr><th>Parametro</th><th>Valore</th><th>Rischio</th></tr></thead>
+                <thead><tr><th><?= t('sd.col_parameter') ?></th><th><?= t('sd.col_value') ?></th><th><?= t('sd.col_risk') ?></th></tr></thead>
                 <tbody>
                     <?php foreach ($details as $d): ?>
                     <tr>
@@ -245,43 +260,58 @@ $sections = [
         <?php endif; ?>
 
         <div class="detail-section">
-            <h3>Raccomandazioni di Sicurezza</h3>
-            <?php if (($scan['cookiesEnabled'] ?? '') === "Sì"): ?>
-            <div class="reco-card"><strong>🍪 Cookie Tracking:</strong> Considera di disabilitare i cookie di terze parti o usa la modalità privata del browser.</div>
+            <h3><?= t('sd.recommendations') ?></h3>
+            <?php
+            // Accept both IT and EN token equivalents so historical scans saved
+            // in either language still trigger the right recommendation.
+            $cookies   = $scan['cookiesEnabled']      ?? '';
+            $dnt       = $scan['doNotTrack']          ?? '';
+            $webrtc    = $scan['webrtcSupport']       ?? '';
+            $https     = $scan['httpsOnly']           ?? '';
+            $adblock   = $scan['adBlockEnabled']      ?? '';
+            $ipv4      = $scan['publicIpv4']          ?? '';
+            $ipv6      = $scan['publicIpv6']          ?? '';
+            $webnotif  = $scan['webNotificationsSupported'] ?? '';
+            ?>
+            <?php if (sd_matches($cookies, ['Sì', 'Yes'])): ?>
+            <div class="reco-card"><strong>🍪 Cookie Tracking:</strong> <?= t('sd.reco.cookies') ?></div>
             <?php endif; ?>
-            <?php if (($scan['doNotTrack'] ?? '') === "Disattivato"): ?>
-            <div class="reco-card"><strong>🚫 Do Not Track:</strong> Attiva "Do Not Track" nelle impostazioni del browser per richiedere ai siti di non tracciarti.</div>
+            <?php if (sd_matches($dnt, ['Disattivato', 'Disabled'])): ?>
+            <div class="reco-card"><strong>🚫 Do Not Track:</strong> <?= t('sd.reco.dnt') ?></div>
             <?php endif; ?>
             <?php if (!empty($scan['browserFingerprinting'])): ?>
-            <div class="reco-card"><strong>🕵️ Fingerprinting:</strong> Installa estensioni come Privacy Badger o Canvas Blocker per ridurre il fingerprinting digitale.</div>
+            <div class="reco-card"><strong>🕵️ Fingerprinting:</strong> <?= t('sd.reco.fingerprint') ?></div>
             <?php endif; ?>
-            <?php if (($scan['webrtcSupport'] ?? '') === "Abilitato"): ?>
-            <div class="reco-card"><strong>🌐 WebRTC:</strong> Usa un'estensione per bloccare WebRTC — può rivelare il tuo IP reale anche con una VPN attiva.</div>
+            <?php if (sd_matches($webrtc, ['Abilitato', 'Enabled'])): ?>
+            <div class="reco-card"><strong>🌐 WebRTC:</strong> <?= t('sd.reco.webrtc') ?></div>
             <?php endif; ?>
-            <?php if (($scan['httpsOnly'] ?? '') === "Non Attivo"): ?>
-            <div class="reco-card"><strong>🔒 HTTPS-Only:</strong> Attiva la modalità "Solo HTTPS" nel browser per garantire connessioni crittografate.</div>
+            <?php if (stripos($https, 'non attivo') !== false || stripos($https, 'not active') !== false || stripos($https, 'http_unsafe') !== false): ?>
+            <div class="reco-card"><strong>🔒 HTTPS-Only:</strong> <?= t('sd.reco.https') ?></div>
             <?php endif; ?>
-            <?php if (($scan['adBlockEnabled'] ?? '') === "No"): ?>
-            <div class="reco-card"><strong>🛡️ Ad Blocker:</strong> Installa un ad blocker per ridurre tracking, malware e migliorare la navigazione.</div>
+            <?php if (sd_matches($adblock, ['No'])): ?>
+            <div class="reco-card"><strong>🛡️ Ad Blocker:</strong> <?= t('sd.reco.adblock') ?></div>
             <?php endif; ?>
-            <?php if (($scan['publicIpv4'] ?? 'N/D') !== 'N/D' || ($scan['publicIpv6'] ?? 'N/D') !== 'N/D'): ?>
-            <div class="reco-card"><strong>🔒 IP Privacy:</strong> Considera una VPN per mascherare il tuo indirizzo IP pubblico.</div>
+            <?php
+            $ndTokens = ['', 'N/D', 'N/A'];
+            if (!in_array(trim($ipv4), $ndTokens, true) || !in_array(trim($ipv6), $ndTokens, true)): ?>
+            <div class="reco-card"><strong>🔒 IP Privacy:</strong> <?= t('sd.reco.ip') ?></div>
             <?php endif; ?>
-            <?php if (($scan['webNotificationsSupported'] ?? '') === "Sì"): ?>
-            <div class="reco-card"><strong>🔔 Notifiche Web:</strong> Gestisci con attenzione i permessi di notifica — possono essere usati per tracking.</div>
+            <?php if (sd_matches($webnotif, ['Sì', 'Yes']) || stripos($webnotif, 'sì') !== false || stripos($webnotif, 'yes') !== false): ?>
+            <div class="reco-card"><strong>🔔 Web Notifications:</strong> <?= t('sd.reco.notif') ?></div>
             <?php endif; ?>
         </div>
     </div>
 
     <footer>
         <div class="footer-grid">
-            <div class="footer-col"><h4>PatchPulse</h4><p>Scanner di sicurezza gratuiti.</p></div>
-            <div class="footer-col"><h4>Scanner</h4><a href="../browser-scan.php">Browser Scanner</a><a href="../VulnerabilityScanner.php">Vulnerability Scanner</a></div>
-            <div class="footer-col"><h4>Contatti</h4><p>support@patchpulse.org</p></div>
+            <div class="footer-col"><h4>PatchPulse</h4><p><?= t('footer.tagline_short') ?></p></div>
+            <div class="footer-col"><h4><?= t('footer.col.scanners') ?></h4><a href="../browser-scan.php"><?= t('footer.scanner.browser') ?></a><a href="../VulnerabilityScanner.php"><?= t('footer.scanner.vulnerability') ?></a></div>
+            <div class="footer-col"><h4><?= t('footer.col.contacts') ?></h4><p>support@mrtc.cc</p></div>
         </div>
-        <div class="footer-bottom"><p>&copy; <?= date('Y') ?> PatchPulse. | <a href="../policy/privacy_policy.php">Privacy</a> | <a href="../policy/terms&condition.php">Terms</a> | <a href="../policy/security-policy.php">Security</a></p></div>
+        <div class="footer-bottom"><p>&copy; <?= date('Y') ?> PatchPulse. | <a href="../policy/privacy_policy.php"><?= t('footer.privacy') ?></a> | <a href="../policy/terms&condition.php"><?= t('footer.terms') ?></a> | <a href="../policy/security-policy.php"><?= t('footer.security') ?></a></p></div>
     </footer>
 </main>
+<?php pp_lang_emit_js(); ?>
 <script src="../script.js"></script>
 </body>
 </html>

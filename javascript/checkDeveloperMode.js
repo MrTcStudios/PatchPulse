@@ -10,6 +10,8 @@
  * Per evitare falsi positivi (mobile, monitor con scaling, sidebar del browser),
  * usiamo soglie conservative.
  */
+import { T } from '../lang/t.js';
+
 export function checkDeveloperMode() {
     const el = document.getElementById('developerMode');
     if (!el) return;
@@ -34,12 +36,12 @@ export function checkDeveloperMode() {
 
         // Stato: usiamo un'etichetta esplicita perché 100% certi non si può essere
         if (detected) {
-            el.innerText = 'Probabile (DevTools aperti)';
+            el.innerText = T('js.bs.devmode.likely');
         } else {
-            el.innerText = 'No';
+            el.innerText = T('js.bs.devmode.no');
         }
     } catch (err) {
         console.debug('checkDeveloperMode error:', err && err.message);
-        el.innerText = 'Non rilevabile';
+        el.innerText = T('js.bs.devmode.undetectable');
     }
 }

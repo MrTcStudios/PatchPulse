@@ -2,13 +2,23 @@
 http_response_code(503);
 header('Content-Type: text/html; charset=utf-8');
 header('Retry-After: 3600');
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.cookie_secure', 1);
+    ini_set('session.cookie_samesite', 'Strict');
+    ini_set('session.use_strict_mode', 1);
+    ini_set('session.use_only_cookies', 1);
+    session_start();
+}
+require_once __DIR__ . "/lang/lang.php";
+$currentLang = pp_lang_current();
 ?>
 <!DOCTYPE html>
-<html lang="it">
+<html lang="<?= htmlspecialchars($currentLang, ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatchPulse - Manutenzione</title>
+    <title><?= t('maintenance.title_tag') ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
     <style>
@@ -26,6 +36,7 @@ header('Retry-After: 3600');
             position: relative;
         }
 
+        /* Background elements */
         .bg-orb {
             position: absolute;
             border-radius: 50%;
@@ -81,6 +92,7 @@ header('Retry-After: 3600');
             margin-bottom: 2rem;
         }
 
+        /* Loader */
         .loader {
             width: 160px;
             height: 4px;
@@ -152,14 +164,14 @@ header('Retry-After: 3600');
             <span class="logo-text">PatchPulse</span>
         </div>
 
-        <h1>In Manutenzione</h1>
-        <p>Stiamo lavorando per migliorare il servizio.<br>Torneremo online a breve.</p>
+        <h1><?= t('maintenance.title') ?></h1>
+        <p><?= t('maintenance.body') ?></p>
 
         <div class="loader"></div>
 
         <div class="status">
             <span class="status-dot"></span>
-            Aggiornamento in corso
+            <?= t('maintenance.status') ?>
         </div>
     </div>
 </body>

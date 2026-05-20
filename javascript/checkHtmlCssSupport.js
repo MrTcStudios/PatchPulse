@@ -8,6 +8,8 @@
  *    grid, flex gap, has() selector, container queries, view transitions...).
  *  - Nessun falso positivo dovuto a mancanza di window.CSS.supports.
  */
+import { T } from '../lang/t.js';
+
 export function checkHtmlCssSupport() {
     const el = document.getElementById('htmlCssSupport');
     if (!el) {
@@ -39,9 +41,13 @@ export function checkHtmlCssSupport() {
     const missing   = checks.filter(c => !c[1]).map(c => c[0]);
 
     if (missing.length === 0) {
-        el.innerText = `Tutte (${supported.length}/${checks.length} feature moderne)`;
+        el.innerText = T('js.bs.html_css.all')
+            .replace('{0}', String(supported.length))
+            .replace('{1}', String(checks.length));
     } else {
-        el.innerText = `${supported.length}/${checks.length} feature moderne`;
-        el.title = `Mancanti: ${missing.join(', ')}`;
+        el.innerText = T('js.bs.html_css.some')
+            .replace('{0}', String(supported.length))
+            .replace('{1}', String(checks.length));
+        el.title = `${T('js.bs.htmlcss.missing_label')} ${missing.join(', ')}`;
     }
 }

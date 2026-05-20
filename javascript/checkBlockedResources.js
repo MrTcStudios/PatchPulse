@@ -1,3 +1,5 @@
+import { T } from '../lang/t.js';
+
 // Funzione per controllare se ci sono risorse bloccate sulla pagina
 export function checkBlockedResources() {
     const blockedResources = [...document.querySelectorAll('img[alt=""], script[src=""]')];
@@ -6,7 +8,7 @@ export function checkBlockedResources() {
     const blockedResourcesElement = document.getElementById('blockedResources');
 
     if (blockedResourcesElement) {
-        blockedResourcesElement.innerText = (blockedResources.length > 0 ? 'Sì' : 'No');
+        blockedResourcesElement.innerText = (blockedResources.length > 0 ? T('js.bs.yes') : T('js.bs.no'));
     } else {
         console.error('Elemento con id "blockedResources" non trovato.');
     }

@@ -1,23 +1,28 @@
 <?php
 ini_set('display_errors', 0);
 error_reporting(0);
+
 header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
+
 session_start();
+require_once __DIR__ . "/../lang/lang.php";
+
 $rateKey = 'loc_requests';
 $now = time();
 $_SESSION[$rateKey] = array_filter($_SESSION[$rateKey] ?? [], fn($t) => ($now - $t) < 60);
 if (count($_SESSION[$rateKey]) >= 10) {
     http_response_code(429);
-    echo json_encode(['error' => 'Troppe richieste. Riprova tra un minuto.']);
+    echo json_encode(['error' => t('api.rate_limit', false)]);
     exit();
 }
 $_SESSION[$rateKey][] = $now;
 session_write_close();
+
 $token = getenv('IPINFO_TOKEN');
 if (empty($token)) {
     http_response_code(500);
-    echo json_encode(['error' => 'Servizio non configurato']);
+    echo json_encode(['error' => t('flash.internal_error', false)]);
     exit();
 }
 $clientIP = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
@@ -37,5 +42,5 @@ if ($httpCode === 200 && $response) {
     echo $response;
 } else {
     http_response_code(502);
-    echo json_encode(['error' => 'Errore nel recupero della posizione']);
+    echo json_encode(['error' => t('api.location_error', false)]);
 }

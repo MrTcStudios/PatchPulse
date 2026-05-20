@@ -2,6 +2,8 @@
  * Profondità di colore dello schermo (bit per pixel).
  * Aggiunto suffisso "bit" per chiarezza UX.
  */
+import { T } from '../lang/t.js';
+
 export function getColorDepth() {
     const el = document.getElementById('colorDepth');
     if (!el) {
@@ -9,5 +11,5 @@ export function getColorDepth() {
         return;
     }
     const depth = (typeof screen !== 'undefined') && (screen.colorDepth || screen.pixelDepth);
-    el.innerText = depth ? `${depth} bit` : 'Non disponibile';
+    el.innerText = depth ? `${depth} bit` : T('js.bs.unavailable');
 }

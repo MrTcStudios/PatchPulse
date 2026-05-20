@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatchPulse - Accesso Negato</title>
+    <title>PatchPulse - Access Denied</title>
     <style>
         body {
             margin: 0;
@@ -15,62 +15,24 @@
             justify-content: center;
             color: #1a1a1a;
         }
-
-        .container {
-            text-align: center;
-            padding: 2rem;
-        }
-
+        .container { text-align: center; padding: 2rem; }
         .error-code {
-            font-size: 120px;
-            font-weight: bold;
-            margin: 0;
+            font-size: 120px; font-weight: bold; margin: 0;
             background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             animation: pulse 2s infinite;
         }
-
-        .message {
-            font-size: 24px;
-            margin: 1rem 0;
-            color: #666;
-        }
-
-        .description {
-            font-size: 18px;
-            margin: 1rem 0;
-            color: #888;
-        }
-
+        .message { font-size: 24px; margin: 1rem 0; color: #666; }
+        .description { font-size: 18px; margin: 1rem 0; color: #888; }
         .home-button {
-            display: inline-block;
-            padding: 12px 24px;
-            margin-top: 20px;
+            display: inline-block; padding: 12px 24px; margin-top: 20px;
             background: linear-gradient(45deg, #4ecdc4, #45b7af);
-            color: white;
-            text-decoration: none;
-            border-radius: 25px;
-            font-weight: 500;
-            transition: transform 0.2s;
+            color: white; text-decoration: none; border-radius: 25px;
+            font-weight: 500; transition: transform 0.2s;
         }
-
-        .home-button:hover {
-            transform: translateY(-2px);
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.8; }
-            100% { opacity: 1; }
-        }
-
-        .lock-icon {
-            font-size: 64px;
-            margin: 20px 0;
-            animation: shake 0.5s ease-in-out infinite;
-        }
-
+        .home-button:hover { transform: translateY(-2px); }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+        .lock-icon { font-size: 64px; margin: 20px 0; animation: shake 0.5s ease-in-out infinite; }
         @keyframes shake {
             0%, 100% { transform: rotate(0deg); }
             25% { transform: rotate(-5deg); }
@@ -82,9 +44,29 @@
     <div class="container">
         <div class="lock-icon">🔒</div>
         <h1 class="error-code">403</h1>
-        <h2 class="message">Accesso Negato</h2>
-        <p class="description">Non hai i permessi necessari per accedere a questa risorsa.</p>
-        <a href="/" class="home-button">Torna alla Home</a>
+        <h2 class="message" id="m">Access Denied</h2>
+        <p class="description" id="d">You do not have permission to access this resource.</p>
+        <a href="/" class="home-button" id="b">Back to Home</a>
     </div>
+    <script>
+    (function () {
+        var lang = null;
+        try {
+            var m = document.cookie.match(/(?:^|; )pp_lang=(it|en)(?:;|$)/);
+            if (m) lang = m[1];
+        } catch (e) {}
+        if (!lang) {
+            var nav = (navigator.language || 'en').slice(0, 2).toLowerCase();
+            lang = nav === 'it' ? 'it' : 'en';
+        }
+        if (lang === 'it') {
+            document.documentElement.lang = 'it';
+            document.title = 'PatchPulse - Accesso Negato';
+            document.getElementById('m').textContent = 'Accesso Negato';
+            document.getElementById('d').textContent = 'Non hai i permessi necessari per accedere a questa risorsa.';
+            document.getElementById('b').textContent = 'Torna alla Home';
+        }
+    })();
+    </script>
 </body>
 </html>

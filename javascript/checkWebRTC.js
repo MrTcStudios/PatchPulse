@@ -12,6 +12,8 @@
  * pubblico. Se non si vuole nessuna chiamata esterna, si può rimuovere
  * `iceServers` e WebRTC tornerà comunque candidate locali (host).
  */
+import { T } from '../lang/t.js';
+
 export function checkWebRTC() {
     return new Promise((resolve) => {
         const el = document.getElementById('webrtcSupport');
@@ -22,7 +24,7 @@ export function checkWebRTC() {
             || window.mozRTCPeerConnection;
 
         if (!RTCPeer) {
-            setText('Non supportato');
+            setText(T('js.bs.webrtc.unsupported'));
             return resolve(false);
         }
 
@@ -30,7 +32,7 @@ export function checkWebRTC() {
         try {
             pc = new RTCPeer({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
         } catch (_) {
-            setText('Non supportato');
+            setText(T('js.bs.webrtc.unsupported'));
             return resolve(false);
         }
 
@@ -50,20 +52,20 @@ export function checkWebRTC() {
             pc.onicecandidate = (e) => { if (e && e.candidate) gotCandidate = true; };
             pc.onicegatheringstatechange = () => {
                 if (pc.iceGatheringState === 'complete') {
-                    finish(gotCandidate ? 'Abilitato' : 'Limitato (API attiva, niente candidate)', gotCandidate);
+                    finish(gotCandidate ? T('js.bs.webrtc.enabled') : T('js.bs.webrtc.limited_no_candidate'), gotCandidate);
                 }
             };
             pc.createOffer()
                 .then((offer) => pc.setLocalDescription(offer))
-                .catch(() => finish('Limitato (errore offerta)', false));
+                .catch(() => finish(T('js.bs.webrtc.limited_offer_err'), false));
         } catch (_) {
-            return finish('Limitato (errore inizializzazione)', false);
+            return finish(T('js.bs.webrtc.limited_init_err'), false);
         }
 
         // Timeout di sicurezza
         setTimeout(() => {
             if (resolved) return;
-            finish(gotCandidate ? 'Abilitato' : 'Limitato (timeout ICE)', gotCandidate);
+            finish(gotCandidate ? T('js.bs.webrtc.enabled') : T('js.bs.webrtc.limited_timeout'), gotCandidate);
         }, 3000);
     });
 }

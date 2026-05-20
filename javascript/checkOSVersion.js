@@ -9,6 +9,8 @@
  *  - Si usa userAgentData.getHighEntropyValues quando disponibile (più affidabile).
  *  - Quando incerto, si dichiara "Sconosciuta" invece di indovinare.
  */
+import { T } from '../lang/t.js';
+
 export async function checkOSVersion(elementId = 'osVersion') {
     const el = document.getElementById(elementId);
     if (!el) {
@@ -91,7 +93,7 @@ export async function checkOSVersion(elementId = 'osVersion') {
                 'Linux i686': 'Linux', 'Linux x86_64': 'Linux',
                 'iPhone': 'iOS', 'iPad': 'iPadOS'
             };
-            name = map[platform] || platform || 'Sconosciuto';
+            name = map[platform] || platform || T('js.bs.unknown');
         }
 
         const arch = detectArch(uaStr, platform);
@@ -99,7 +101,7 @@ export async function checkOSVersion(elementId = 'osVersion') {
     };
 
     const formatOutput = ({ name, version, arch }) => {
-        let out = name || 'Sistema sconosciuto';
+        let out = name || T('js.bs.os.unknown_system');
         if (version) out += ` ${version}`;
         if (arch)    out += ` (${arch})`;
         return out;

@@ -10,11 +10,13 @@ ini_set('session.use_only_cookies', 1);
 
 session_start();
 
+// Se già loggato, vai alla dashboard
 if (isset($_SESSION['admin']) && $_SESSION['admin'] === true) {
     header("Location: dashboard.php");
     exit;
 }
 
+// CSRF token
 if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
 }
@@ -22,10 +24,12 @@ if (empty($_SESSION['admin_csrf'])) {
 $errore = '';
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    // CSRF
     $csrf = $_POST['csrf_token'] ?? '';
     if (empty($csrf) || !isset($_SESSION['admin_csrf']) || !hash_equals($_SESSION['admin_csrf'], $csrf)) {
         $errore = "Richiesta non valida. Riprova.";
     } else {
+        // Brute force protection
         $attemptsKey = 'admin_login_attempts';
         $lockoutKey = 'admin_lockout_until';
 
@@ -33,6 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $remaining = $_SESSION[$lockoutKey] - time();
             $errore = "Troppi tentativi. Riprova tra {$remaining} secondi.";
         } else {
+            // Turnstile CAPTCHA
             $captchaResponse = $_POST['cf-turnstile-response'] ?? '';
             if (empty($captchaResponse)) {
                 $errore = "Completa la verifica di sicurezza.";
@@ -66,10 +71,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     if (empty($adminHash)) {
                         $errore = "Configurazione admin non valida.";
                     } else {
+                        // Timing-safe comparison per username
                         $usernameMatch = hash_equals($adminUser, $username);
                         $passwordMatch = password_verify($password, $adminHash);
 
                         if ($usernameMatch && $passwordMatch) {
+                            // Login riuscito
                             session_regenerate_id(true);
                             unset($_SESSION[$attemptsKey], $_SESSION[$lockoutKey]);
                             $_SESSION['admin'] = true;
@@ -80,7 +87,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         } else {
                             $_SESSION[$attemptsKey] = ($_SESSION[$attemptsKey] ?? 0) + 1;
                             if ($_SESSION[$attemptsKey] >= 5) {
-                                $_SESSION[$lockoutKey] = time() + 600;
+                                $_SESSION[$lockoutKey] = time() + 600; // 10 minuti
                                 $_SESSION[$attemptsKey] = 0;
                             }
                             $errore = "Credenziali errate.";

@@ -5,6 +5,8 @@
  * un'indicazione delle feature ES moderne disponibili — usando soltanto
  * `typeof` / `in`, senza `new Function()` che richiederebbe `unsafe-eval` nella CSP.
  */
+import { T } from '../lang/t.js';
+
 export function checkJavaScriptStatus() {
     const el = document.getElementById('javascriptStatus');
     if (!el) {
@@ -25,6 +27,6 @@ export function checkJavaScriptStatus() {
     }
 
     el.innerText = features.length
-        ? `Attivo (${features.join(', ')})`
-        : 'Attivo';
+        ? T('js.bs.js.active_with').replace('{0}', features.join(', '))
+        : T('js.bs.js.active');
 }

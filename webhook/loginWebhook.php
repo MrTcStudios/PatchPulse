@@ -13,6 +13,7 @@ function sendLoginWebhook($user_id, $name, $email) {
     }
 
     $safeUserId = (int)$user_id;
+    // Per Discord, sanitizza per markdown injection (non serve HTML escape)
     $safeName = str_replace(['`', '*', '_', '~', '|', '@', '#'], '', trim($name));
     $safeEmail = str_replace(['`', '*', '_', '~', '|', '@', '#'], '', trim($email));
 

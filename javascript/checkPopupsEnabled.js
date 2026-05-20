@@ -1,3 +1,5 @@
+import { T } from '../lang/t.js';
+
 // Funzione per verificare se i pop-up sono abilitati
 export function checkPopupsEnabled() {
     // Modificata la verifica dei pop-up
@@ -7,7 +9,7 @@ export function checkPopupsEnabled() {
     const popupsEnabledElement = document.getElementById('popupsEnabled');
 
     if (popupsEnabledElement) {
-        popupsEnabledElement.innerText = (popupsEnabled ? 'Sì' : 'No');
+        popupsEnabledElement.innerText = (popupsEnabled ? T('js.bs.yes') : T('js.bs.no'));
     } else {
         console.error('Elemento con id "popupsEnabled" non trovato.');
     }

@@ -14,6 +14,7 @@ header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
 
 include("config.php");
+require_once __DIR__ . "/lang/lang.php";
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -21,37 +22,38 @@ if (session_status() === PHP_SESSION_NONE) {
 
 try {
     if (!isset($_SESSION['user_id'])) {
-        throw new Exception('Non autorizzato', 401);
+        throw new Exception(t('vd.unauthorized', false), 401);
     }
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        throw new Exception('Metodo non consentito', 405);
+        throw new Exception(t('vd.method_not_allowed', false), 405);
     }
 
+    // CSRF
     if (
         empty($_SERVER['HTTP_X_REQUESTED_WITH']) ||
         strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) !== 'xmlhttprequest'
     ) {
-        throw new Exception('Richiesta non valida', 403);
+        throw new Exception(t('vd.invalid_request', false), 403);
     }
 
     $csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     if (empty($csrfToken) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
-        throw new Exception('Token CSRF non valido', 403);
+        throw new Exception(t('vd.csrf_invalid', false), 403);
     }
 
     $rawInput = file_get_contents('php://input');
     if (strlen($rawInput) > 500000) {
-        throw new Exception('Payload troppo grande', 400);
+        throw new Exception(t('ss.payload_too_big', false), 400);
     }
 
     $input = json_decode($rawInput, true);
     if (!is_array($input)) {
-        throw new Exception('JSON non valido', 400);
+        throw new Exception(t('vd.json_invalid', false), 400);
     }
 
     if (!isset($input['scanId']) || !isset($input['resultsContent']) || !isset($input['targetUrl'])) {
-        throw new Exception('Dati mancanti', 400);
+        throw new Exception(t('ss.missing_fields', false), 400);
     }
 
     $user_id = (int)$_SESSION['user_id'];
@@ -60,12 +62,14 @@ try {
     $results_content = $input['resultsContent'];
     $scan_id = substr(trim($input['scanId']), 0, 64);
 
+    // Validazione URL
     if (!filter_var($target_url, FILTER_VALIDATE_URL)) {
-        throw new Exception('URL non valido', 400);
+        throw new Exception(t('ss.url_invalid', false), 400);
     }
 
+    // Validazione scanId
     if (!preg_match('/^[a-f0-9]{32}$/', $scan_id)) {
-        throw new Exception('Scan ID non valido', 400);
+        throw new Exception(t('ss.scan_id_invalid', false), 400);
     }
 
     $stmt = $conn->prepare("INSERT INTO vulnerability_scans (user_id, scan_name, target_url, scan_results, scan_session_id, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
@@ -84,7 +88,7 @@ try {
         echo json_encode(['success' => true]);
     } else {
         error_log("save_scan_results error: " . $stmt->error);
-        throw new Exception('Errore nel salvataggio', 500);
+        throw new Exception(t('ss.save_failed', false), 500);
     }
 
     $stmt->close();

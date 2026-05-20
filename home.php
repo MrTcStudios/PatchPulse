@@ -1,14 +1,16 @@
 <?php
 //home.php
 include("config.php");
+require_once __DIR__ . "/lang/lang.php";
+$currentLang = pp_lang_current();
 ?>
 
 <!DOCTYPE html>
-<html lang="it">
+<html lang="<?= htmlspecialchars($currentLang, ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatchPulse - Cybersecurity Solutions</title>
+    <title><?= t('home.title_tag') ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
@@ -23,13 +25,13 @@ include("config.php");
                 PatchPulse
             </a>
             <div style="display:flex;align-items:center;gap:0.5rem;">
-                <button class="bell-btn" title="Notifiche" aria-label="Notifiche">
+                <button class="bell-btn" title="<?= t('nav.notifications') ?>" aria-label="<?= t('nav.notifications') ?>">
                     <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                     </svg>
                 </button>
-                <button class="hamburger" id="hamburger" aria-label="Menu">
+                <button class="hamburger" id="hamburger" aria-label="<?= t('nav.menu') ?>">
                     <span></span><span></span><span></span>
                 </button>
             </div>
@@ -40,7 +42,7 @@ include("config.php");
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:#666;flex-shrink:0">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            <input type="text" placeholder="Search" aria-label="Search">
+            <input type="text" placeholder="<?= t('nav.search_placeholder') ?>" aria-label="<?= t('nav.search_placeholder') ?>">
             <span class="search-shortcut">S</span>
         </div>
 
@@ -53,7 +55,7 @@ include("config.php");
                         <polyline points="9 22 9 12 15 12 15 22"/>
                     </svg>
                 </span>
-                Homepage
+                <?= t('nav.homepage') ?>
             </a>
             <a href="#servizi" class="nav-item" data-section="servizi">
                 <span class="nav-icon">
@@ -62,7 +64,7 @@ include("config.php");
                         <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
                     </svg>
                 </span>
-                Applications
+                <?= t('nav.applications') ?>
             </a>
             <a href="browser-scan.php" class="nav-item" target="_blank">
                 <span class="nav-sub-icon">
@@ -70,7 +72,7 @@ include("config.php");
                         <polyline points="9 18 15 12 9 6"/>
                     </svg>
                 </span>
-                Browser Scanner
+                <?= t('nav.browser_scanner') ?>
             </a>
             <a href="VulnerabilityScanner.php" class="nav-item" target="_blank">
                 <span class="nav-sub-icon">
@@ -78,7 +80,7 @@ include("config.php");
                         <polyline points="9 18 15 12 9 6"/>
                     </svg>
                 </span>
-                Website Overview
+                <?= t('nav.website_overview') ?>
             </a>
             <a href="vpn-checker.php" class="nav-item" target="_blank">
                 <span class="nav-sub-icon">
@@ -86,7 +88,7 @@ include("config.php");
                         <polyline points="9 18 15 12 9 6"/>
                     </svg>
                 </span>
-                VPN Checker
+                <?= t('nav.vpn_checker') ?>
             </a>
             <a href="data-breach-checker.php" class="nav-item" target="_blank">
                 <span class="nav-sub-icon">
@@ -94,7 +96,7 @@ include("config.php");
                         <polyline points="9 18 15 12 9 6"/>
                     </svg>
                 </span>
-                Data Breach Monitor
+                <?= t('nav.data_breach_monitor') ?>
             </a>
         </div>
 
@@ -107,27 +109,27 @@ include("config.php");
                         <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                     </svg>
                 </span>
-                FAQ
+                <?= t('nav.faq') ?>
             </a>
             <?php if (isset($_SESSION['user_id'])): ?>
             <a href="account.php" class="nav-item">
                 <span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-                Area Personale
+                <?= t('nav.account') ?>
             </a>
             <?php else: ?>
             <a href="log-reg.php#login" class="nav-item">
                 <span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></span>
-                Login
+                <?= t('nav.login') ?>
             </a>
             <?php endif; ?>
-            <a href="#" class="nav-item">
+            <a href="settings.php" class="nav-item">
                 <span class="nav-icon">
                     <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
                     </svg>
                 </span>
-                Settings
+                <?= t('nav.settings') ?>
             </a>
         </div>
     </aside>
@@ -140,11 +142,11 @@ include("config.php");
             <div class="dot-grid"></div>
             <div class="hero-content">
                 <div class="hero-text">
-                    <p class="hero-eyebrow">Free Cybersecurity Tools</p>
-                    <h1 class="hero-title">Security</h1>
-                    <p class="hero-subtitle">Scansiona siti web, verifica la tua VPN e monitora le violazioni dei dati. Completamente gratuito.</p>
+                    <p class="hero-eyebrow"><?= t('home.hero.eyebrow') ?></p>
+                    <h1 class="hero-title"><?= t('home.hero.title') ?></h1>
+                    <p class="hero-subtitle"><?= t('home.hero.subtitle') ?></p>
                     <a href="#servizi" class="hero-cta">
-                        Inizia a Scannerizzare
+                        <?= t('home.hero.cta') ?>
                         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                         </svg>
@@ -161,9 +163,9 @@ include("config.php");
 
         <!-- SCANNER SECTION -->
         <section class="section" id="servizi">
-            <p class="section-label">Cosa puoi fare</p>
-            <h2 class="section-title">Strumenti</h2>
-            <p class="section-desc">Tutto gratuito. Nessun account richiesto per iniziare.</p>
+            <p class="section-label"><?= t('home.tools.label') ?></p>
+            <h2 class="section-title"><?= t('home.tools.title') ?></h2>
+            <p class="section-desc"><?= t('home.tools.desc') ?></p>
 
             <style>
                 .tools-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
@@ -243,9 +245,9 @@ include("config.php");
                         <svg fill="none" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
                     </div>
                     <div>
-                        <span class="tool-tag">Strumento Principale</span>
-                        <h3>Website Vulnerability Scanner</h3>
-                        <p>Metti alla prova il tuo sito. Port scan, analisi SSL, test Nikto e DNS recon — tutto in una scansione.</p>
+                        <span class="tool-tag"><?= t('home.tools.featured_tag') ?></span>
+                        <h3><?= t('home.tools.featured_title') ?></h3>
+                        <p><?= t('home.tools.featured_desc') ?></p>
                     </div>
                     <span class="tool-arrow"><svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
                 </a>
@@ -255,9 +257,9 @@ include("config.php");
                     <div class="tool-ico tool-ico-teal">
                         <svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                     </div>
-                    <h3>Browser Scanner</h3>
-                    <p>Scopri quante informazioni il tuo browser sta regalando a chiunque te le chieda.</p>
-                    <span class="tool-status tool-status-live">Attivo</span>
+                    <h3><?= t('home.tools.browser_title') ?></h3>
+                    <p><?= t('home.tools.browser_desc') ?></p>
+                    <span class="tool-status tool-status-live"><?= t('home.tools.status_active') ?></span>
                 </a>
 
                 <!-- VPN Checker -->
@@ -265,9 +267,9 @@ include("config.php");
                     <div class="tool-ico tool-ico-amber">
                         <svg fill="none" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                     </div>
-                    <h3>VPN Checker</h3>
-                    <p>Hai la VPN accesa ma sei davvero protetto? Controlla leak IP, WebRTC e DNS.</p>
-                    <span class="tool-status tool-status-live">Attivo</span>
+                    <h3><?= t('home.tools.vpn_title') ?></h3>
+                    <p><?= t('home.tools.vpn_desc') ?></p>
+                    <span class="tool-status tool-status-live"><?= t('home.tools.status_active') ?></span>
                 </a>
 
                 <!-- Data Breach -->
@@ -275,14 +277,14 @@ include("config.php");
                     <div class="tool-ico tool-ico-rose">
                         <svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </div>
-                    <h3>Data Breach Checker</h3>
-                    <p>La tua email è finita in qualche leak? Meglio saperlo prima di qualcun altro.</p>
-                    <span class="tool-status tool-status-live">Attivo</span>
+                    <h3><?= t('home.tools.breach_title') ?></h3>
+                    <p><?= t('home.tools.breach_desc') ?></p>
+                    <span class="tool-status tool-status-live"><?= t('home.tools.status_active') ?></span>
                 </a>
 
                 <!-- Coming soon -->
                 <div class="tool-card tool-ghost">
-                    <span>Qualcosa di nuovo sta arrivando...</span>
+                    <span><?= t('home.tools.coming_soon') ?></span>
                 </div>
 
             </div>
@@ -292,19 +294,19 @@ include("config.php");
         <div class="stats-bar">
             <div class="stat-item">
                 <div class="stat-number">500+</div>
-                <div class="stat-label">Scansioni effettuate</div>
+                <div class="stat-label"><?= t('home.stats.scans') ?></div>
             </div>
             <div class="stat-item">
                 <div class="stat-number">99.9%</div>
-                <div class="stat-label">Uptime garantito</div>
+                <div class="stat-label"><?= t('home.stats.uptime') ?></div>
             </div>
             <div class="stat-item">
                 <div class="stat-number">24/7</div>
-                <div class="stat-label">Sempre disponibile</div>
+                <div class="stat-label"><?= t('home.stats.availability') ?></div>
             </div>
             <div class="stat-item">
                 <div class="stat-number">4</div>
-                <div class="stat-label">Tool attivi</div>
+                <div class="stat-label"><?= t('home.stats.tools') ?></div>
             </div>
         </div>
 
@@ -312,45 +314,45 @@ include("config.php");
 
         <!-- FAQ -->
         <section class="section centered" id="faq">
-            <p class="section-label">Supporto</p>
-            <h2 class="section-title">Domande Frequenti</h2>
-            <p class="section-desc">Tutto quello che devi sapere su PatchPulse e i nostri scanner.</p>
+            <p class="section-label"><?= t('home.faq.label') ?></p>
+            <h2 class="section-title"><?= t('home.faq.title') ?></h2>
+            <p class="section-desc"><?= t('home.faq.desc') ?></p>
 
             <div class="faq-list">
                 <div class="faq-item">
                     <div class="faq-question">
-                        <h3>È davvero tutto gratuito?</h3>
+                        <h3><?= t('home.faq.q1') ?></h3>
                         <span class="faq-toggle">+</span>
                     </div>
                     <div class="faq-answer">
-                        Sì, tutti i nostri scanner sono completamente gratuiti. Crediamo che la sicurezza online debba essere accessibile a tutti.
+                        <?= t('home.faq.a1') ?>
                     </div>
                 </div>
                 <div class="faq-item">
                     <div class="faq-question">
-                        <h3>Devo registrarmi per utilizzare gli scanner?</h3>
+                        <h3><?= t('home.faq.q2') ?></h3>
                         <span class="faq-toggle">+</span>
                     </div>
                     <div class="faq-answer">
-                        La registrazione è opzionale per tutti i tool tranne il Website Vulnerability Scanner, dove bisogna loggarsi e verificare il proprio dominio.
+                        <?= t('home.faq.a2') ?>
                     </div>
                 </div>
                 <div class="faq-item">
                     <div class="faq-question">
-                        <h3>Come funziona il Website Vulnerability Scanner?</h3>
+                        <h3><?= t('home.faq.q3') ?></h3>
                         <span class="faq-toggle">+</span>
                     </div>
                     <div class="faq-answer">
-                        Inserisci l'URL del sito che vuoi analizzare e il nostro scanner controllerà automaticamente le vulnerabilità più comuni, le configurazioni di sicurezza e i potenziali rischi usando tool molto apprezzati in questo campo come nmap, nikto ecc.. e li mettiamo insieme per offrirti un servizio completo.
+                        <?= t('home.faq.a3') ?>
                     </div>
                 </div>
                 <div class="faq-item">
                     <div class="faq-question">
-                        <h3>Come funziona il Browser Scanner?</h3>
+                        <h3><?= t('home.faq.q4') ?></h3>
                         <span class="faq-toggle">+</span>
                     </div>
                     <div class="faq-answer">
-                        Il Browser Scanner mostra cosa il sito riesce a ottenere dal tuo browser, riuscendo a scoprire informazioni personali e di navigazione. È un modo per verificare la tua privacy online.
+                        <?= t('home.faq.a4') ?>
                     </div>
                 </div>
             </div>
@@ -360,15 +362,15 @@ include("config.php");
 
         <!-- ABOUT -->
         <section class="section centered" id="about">
-            <p class="section-label">Chi siamo</p>
-            <h2 class="section-title">Perché PatchPulse</h2>
+            <p class="section-label"><?= t('home.about.label') ?></p>
+            <h2 class="section-title"><?= t('home.about.title') ?></h2>
 
             <div class="about-box">
-                <p>PatchPulse è un'applicazione web progettata per migliorare la sicurezza online degli utenti fornendo strumenti semplici e accessibili per scansionare siti web alla ricerca di vulnerabilità e rischi di sicurezza.</p>
-                <p>Il nostro obiettivo è aumentare la consapevolezza sui problemi di sicurezza e privacy durante la navigazione web, offrendo scanner professionali completamente gratuiti e sempre aggiornati.</p>
+                <p><?= t('home.about.p1') ?></p>
+                <p><?= t('home.about.p2') ?></p>
                 <div class="about-notice">
-                    <h4>🚧 Progetto in Sviluppo</h4>
-                    <p>PatchPulse è ancora in fase di sviluppo e stiamo lavorando attivamente per aggiungere nuove funzionalità e miglioramenti. Seguici per rimanere aggiornato sulle novità!</p>
+                    <h4><?= t('home.about.notice_title') ?></h4>
+                    <p><?= t('home.about.notice_body') ?></p>
                 </div>
             </div>
         </section>
@@ -377,26 +379,26 @@ include("config.php");
 
         <!-- ACCOUNT -->
         <section class="section centered" id="account">
-            <p class="section-label">Area Personale</p>
-            <h2 class="section-title">Il tuo Account</h2>
+            <p class="section-label"><?= t('home.account.label') ?></p>
+            <h2 class="section-title"><?= t('home.account.title') ?></h2>
 
             <?php if (isset($_SESSION['user_id'])): ?>
                 <div class="account-card">
-                    <h3>Bentornato!</h3>
-                    <p>Clicca per andare nella tua area personale e gestire le tue scansioni.</p>
+                    <h3><?= t('home.account.welcome_back') ?></h3>
+                    <p><?= t('home.account.welcome_desc') ?></p>
                     <div class="btn-group">
-                        <a href="account.php" class="btn-primary">Area Personale</a>
+                        <a href="account.php" class="btn-primary"><?= t('nav.account') ?></a>
                     </div>
                 </div>
             <?php else: ?>
                 <div class="account-card">
-                    <h3>Accedi al tuo Account</h3>
-                    <p>Registrati per salvare i risultati delle tue scansioni, accedere alla cronologia e ricevere notifiche sui nuovi tool disponibili.</p>
+                    <h3><?= t('home.account.access_title') ?></h3>
+                    <p><?= t('home.account.access_desc') ?></p>
                     <div class="btn-group">
-                        <a href="log-reg.php#login" class="btn-primary">Accedi</a>
-                        <a href="log-reg.php#register" class="btn-outline">Registrati</a>
+                        <a href="log-reg.php#login" class="btn-primary"><?= t('home.account.cta_login') ?></a>
+                        <a href="log-reg.php#register" class="btn-outline"><?= t('home.account.cta_register') ?></a>
                     </div>
-                    <p class="account-note">Oppure continua senza registrazione per utilizzare i nostri scanner di base</p>
+                    <p class="account-note"><?= t('home.account.no_account') ?></p>
                 </div>
             <?php endif; ?>
         </section>
@@ -406,39 +408,40 @@ include("config.php");
             <div class="footer-grid">
                 <div class="footer-col">
                     <h4>PatchPulse</h4>
-                    <p>Scanner di sicurezza gratuiti per migliorare la tua sicurezza online. Identifica vulnerabilità e rischi di privacy.</p>
+                    <p><?= t('footer.tagline') ?></p>
                 </div>
                 <div class="footer-col">
-                    <h4>Scanner</h4>
-                    <a href="browser-scan.php">Browser Scanner</a>
-                    <a href="VulnerabilityScanner.php">Website Vulnerability Scanner</a>
-                    <a href="vpn-checker.php">VPN Security Checker</a>
-                    <a href="data-breach-checker.php">Data Breach Checker</a>
-                    <a href="#">Coming Soon...</a>
+                    <h4><?= t('footer.col.scanners') ?></h4>
+                    <a href="browser-scan.php"><?= t('footer.scanner.browser') ?></a>
+                    <a href="VulnerabilityScanner.php"><?= t('footer.scanner.vulnerability') ?></a>
+                    <a href="vpn-checker.php"><?= t('footer.scanner.vpn') ?></a>
+                    <a href="data-breach-checker.php"><?= t('footer.scanner.breach') ?></a>
+                    <a href="#"><?= t('footer.scanner.coming') ?></a>
                 </div>
                 <div class="footer-col">
-                    <h4>Contatti</h4>
+                    <h4><?= t('footer.col.contacts') ?></h4>
                     <p>Email: support@patchpulse.org</p>
                     <a href="https://github.com/MrTcStudios/PatchPulse" target="_blank">GitHub: MrTcStudios/PatchPulse</a>
                 </div>
                 <div class="footer-col">
-                    <h4>Risorse</h4>
-                    <a href="#account">Area Account</a>
-                    <a href="#about">Documentazione</a>
-                    <a href="#faq">FAQ</a>
+                    <h4><?= t('footer.col.resources') ?></h4>
+                    <a href="#account"><?= t('footer.account_area') ?></a>
+                    <a href="#about"><?= t('footer.documentation') ?></a>
+                    <a href="#faq"><?= t('nav.faq') ?></a>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2025 PatchPulse. Tutti i diritti riservati. |
-                   <a href="policy/privacy_policy.php" target="_blank">Privacy Policy</a> |
-                   <a href="policy/terms&condition.php" target="_blank">Terms of Service</a> |
-                   <a href="policy/security-policy.php" target="_blank">Security Policy</a>
+                <p>&copy; 2025 PatchPulse. <?= t('footer.rights') ?> |
+                   <a href="policy/privacy_policy.php" target="_blank"><?= t('footer.privacy') ?></a> |
+                   <a href="policy/terms&condition.php" target="_blank"><?= t('footer.terms') ?></a> |
+                   <a href="policy/security-policy.php" target="_blank"><?= t('footer.security') ?></a>
                 </p>
             </div>
         </footer>
 
     </main><!-- end main-wrapper -->
 
+    <?php pp_lang_emit_js(); ?>
     <script src="script.js"></script>
 </body>
 </html>

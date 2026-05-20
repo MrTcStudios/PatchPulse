@@ -2,3 +2,7 @@
 *.old
 *.swp
 *.log
+.claude/
+*.tar.gz
+*.swp
+

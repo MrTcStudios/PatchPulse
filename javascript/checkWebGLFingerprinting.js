@@ -6,6 +6,8 @@
  *    se l'estensione c'è viene usata, altrimenti si usa `gl.RENDERER`/`gl.VENDOR`.
  *  - Niente più `loseContext()` per evitare il warning "WebGL context was lost".
  */
+import { T } from '../lang/t.js';
+
 export function checkWebGLFingerprinting() {
     const el = document.getElementById('webglFingerprinting');
     if (!el) {
@@ -20,7 +22,7 @@ export function checkWebGLFingerprinting() {
         gl1 = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
         gl2 = canvas.getContext('webgl2');
     } catch (_) {
-        el.innerText = 'WebGL non disponibile';
+        el.innerText = T('js.bs.gpu.no_webgl');
         return;
     }
 
@@ -44,11 +46,11 @@ export function checkWebGLFingerprinting() {
         }
     }
 
-    let txt = `WebGL: ${supportsWebGL ? 'Sì' : 'No'}, WebGL2: ${supportsWebGL2 ? 'Sì' : 'No'}`;
+    const yesT = T('js.bs.yes');
+    const noT = T('js.bs.no');
+    let txt = `WebGL: ${supportsWebGL ? yesT : noT}, WebGL2: ${supportsWebGL2 ? yesT : noT}`;
     if (supportsWebGL) {
-        txt += masked
-            ? ' — info GPU mascherate (basso rischio)'
-            : ' — info GPU esposte (rischio fingerprinting)';
+        txt += masked ? T('js.bs.webgl.masked') : T('js.bs.webgl.exposed');
     }
     el.innerText = txt;
 }

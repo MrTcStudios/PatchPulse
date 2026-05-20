@@ -12,6 +12,8 @@
  *  - Niente più `WEBGL_lose_context.loseContext()`: provocava warning
  *    "WebGL context was lost" nei DevTools. Il canvas viene comunque GC.
  */
+import { T } from '../lang/t.js';
+
 export function checkGPUInfo() {
     const el = document.getElementById('gpuName');
     if (!el) {
@@ -26,12 +28,12 @@ export function checkGPUInfo() {
         canvas.addEventListener('webglcontextlost', (e) => e.preventDefault(), { once: true });
         gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
     } catch (_) {
-        el.innerText = 'WebGL non disponibile';
+        el.innerText = T('js.bs.gpu.no_webgl');
         return;
     }
 
     if (!gl) {
-        el.innerText = 'WebGL non disponibile';
+        el.innerText = T('js.bs.gpu.no_webgl');
         return;
     }
 
@@ -55,14 +57,14 @@ export function checkGPUInfo() {
         if (!renderer) renderer = String(gl.getParameter(gl.RENDERER) || '').trim();
 
         if (!vendor && !renderer) {
-            el.innerText = 'Info GPU non disponibile';
+            el.innerText = T('js.bs.gpu.no_info');
             return;
         }
 
         const text = [vendor, renderer].filter(Boolean).join(' — ');
-        el.innerText = masked ? `${text} (mascherato dal browser)` : text;
+        el.innerText = masked ? `${text} ${T('js.bs.gpu.masked_suffix')}` : text;
     } catch (err) {
         console.debug('checkGPUInfo error:', err && err.message);
-        el.innerText = 'N/D';
+        el.innerText = T('js.bs.nd');
     }
 }

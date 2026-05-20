@@ -9,6 +9,8 @@
  *    parametri (lat/lng vengono passati come number, non concatenati nell'HTML).
  *  - Il src dell'iframe ha valori numerici solo, validati con Number.isFinite.
  */
+import { T } from '../lang/t.js';
+
 export function getLocation() {
     const el = document.getElementById('geolocationInfo');
     if (!el) {
@@ -17,7 +19,7 @@ export function getLocation() {
     }
 
     if (!navigator.geolocation) {
-        el.textContent = 'Geolocalizzazione non supportata dal browser.';
+        el.textContent = T('js.bs.geo.unsupported');
         return;
     }
 
@@ -37,11 +39,13 @@ export function showPosition(position, el) {
     const lng = Number(position?.coords?.longitude);
 
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        el.textContent = 'Posizione non disponibile.';
+        el.textContent = T('js.bs.geo.unavailable_pos');
         return;
     }
 
-    el.textContent = `Latitudine: ${lat.toFixed(6)}°, Longitudine: ${lng.toFixed(6)}°`;
+    el.textContent = T('js.bs.geo.coords')
+        .replace('{0}', lat.toFixed(6))
+        .replace('{1}', lng.toFixed(6));
 
     if (mapFrame) {
         const bbox = [lng - 0.01, lat - 0.01, lng + 0.01, lat + 0.01].join(',');
@@ -57,12 +61,12 @@ export function showError(error, el) {
 
     let msg;
     switch (error?.code) {
-        case 1: msg = 'Permesso negato dall\'utente.'; break;
-        case 2: msg = 'Posizione non disponibile.'; break;
-        case 3: msg = 'Timeout durante la richiesta.'; break;
-        default: msg = error?.message || 'Errore sconosciuto.';
+        case 1: msg = T('js.bs.geo.err_denied'); break;
+        case 2: msg = T('js.bs.geo.err_unavailable'); break;
+        case 3: msg = T('js.bs.geo.err_timeout'); break;
+        default: msg = (error && error.message) || T('js.bs.geo.err_unknown');
     }
 
-    el.textContent = `Geolocalizzazione non disponibile (${msg})`;
+    el.textContent = T('js.bs.geo.wrapper').replace('{0}', msg);
     // Niente fallback automatico al server: rispettiamo la scelta dell'utente.
 }

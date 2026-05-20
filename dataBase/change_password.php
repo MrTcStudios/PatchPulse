@@ -10,6 +10,8 @@ ini_set('session.use_only_cookies', 1);
 
 session_start();
 
+require_once __DIR__ . "/../lang/lang.php";
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../log-reg.php");
     exit();
@@ -20,9 +22,10 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST" || !isset($_POST['change_password'])) 
     exit();
 }
 
+// CSRF
 $csrfToken = $_POST['csrf_token'] ?? '';
 if (empty($csrfToken) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
-    $_SESSION['password_change_message'] = "Richiesta non valida. Riprova.";
+    $_SESSION['password_change_message'] = "flash.invalid_request";
     header("Location: ../account.php");
     exit();
 }
@@ -41,49 +44,53 @@ $db_pass = getenv('DB_PASS');
 
 $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
 if ($conn->connect_error) {
-    $_SESSION['password_change_message'] = "Errore interno. Riprova più tardi.";
+    $_SESSION['password_change_message'] = "flash.internal_error";
     header("Location: ../account.php");
     exit();
 }
 
 $user_id = (int)$_SESSION['user_id'];
+// NON applicare htmlspecialchars alle password
 $current_password = $_POST['current_password'] ?? '';
 $new_password = $_POST['new_password'] ?? '';
 $confirm_new_password = $_POST['confirm_new_password'] ?? '';
 
+// Validazioni
 if (empty($current_password) || empty($new_password) || empty($confirm_new_password)) {
-    $_SESSION['password_change_message'] = "Compila tutti i campi.";
+    $_SESSION['password_change_message'] = "flash.fill_all_fields";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
 
 if ($new_password !== $confirm_new_password) {
-    $_SESSION['password_change_message'] = "Le nuove password non coincidono.";
+    $_SESSION['password_change_message'] = "flash.register.pwd_mismatch";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
 
+// Forza password
 if (mb_strlen($new_password) < 8) {
-    $_SESSION['password_change_message'] = "La nuova password deve avere almeno 8 caratteri.";
+    $_SESSION['password_change_message'] = "flash.register.weak_pwd";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
 if (mb_strlen($new_password) > 128) {
-    $_SESSION['password_change_message'] = "La password è troppo lunga (max 128 caratteri).";
+    $_SESSION['password_change_message'] = "flash.register.long_pwd";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
 if (!preg_match('/[A-Z]/', $new_password) || !preg_match('/[a-z]/', $new_password) || !preg_match('/[0-9]/', $new_password)) {
-    $_SESSION['password_change_message'] = "La password deve contenere almeno una maiuscola, una minuscola e un numero.";
+    $_SESSION['password_change_message'] = "flash.register.pwd_complexity";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
 
+// Verifica password attuale
 $stmt = $conn->prepare("SELECT password, email, name FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -92,19 +99,20 @@ $stmt->fetch();
 $stmt->close();
 
 if (!password_verify($current_password, $hashed_password)) {
-    $_SESSION['password_change_message'] = "La password attuale non è corretta.";
+    $_SESSION['password_change_message'] = "flash.password.wrong_current";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
 
+// Aggiorna password (bcrypt cost 12)
 $new_hashed_password = password_hash($new_password, PASSWORD_BCRYPT, ['cost' => 12]);
 
 $update_stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
 $update_stmt->bind_param("si", $new_hashed_password, $user_id);
 
 if (!$update_stmt->execute()) {
-    $_SESSION['password_change_message'] = "Errore durante il cambio password. Riprova.";
+    $_SESSION['password_change_message'] = "flash.password.change_failed";
     $update_stmt->close();
     $conn->close();
     header("Location: ../account.php");
@@ -112,8 +120,10 @@ if (!$update_stmt->execute()) {
 }
 $update_stmt->close();
 
+// Rigenera sessione dopo cambio password
 session_regenerate_id(true);
 
+// Log
 $user_ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'unknown';
 if (!filter_var($user_ip, FILTER_VALIDATE_IP)) {
     $user_ip = 'unknown';
@@ -124,8 +134,9 @@ $log_stmt->bind_param("is", $user_id, $user_ip);
 $log_stmt->execute();
 $log_stmt->close();
 
-$_SESSION['password_change_message'] = "Password cambiata con successo!";
+$_SESSION['password_change_message'] = "flash.password.changed";
 
+// Email notifica
 $mail = new PHPMailer(true);
 try {
     $mail->isSMTP();
@@ -144,8 +155,8 @@ try {
     $safeIp = htmlspecialchars($user_ip, ENT_QUOTES, 'UTF-8');
 
     $mail->isHTML(true);
-    $mail->Subject = 'Notifica di Cambio Password';
-    $mail->Body = "<p>Ciao {$safeName},</p><p>La tua password è stata cambiata. Se non sei stato tu, contattaci immediatamente e cambia la tua password.</p><p>IP: {$safeIp}</p><p>Il Team di PatchPulse</p>";
+    $mail->Subject = t('mail.pwd_changed.subject', false);
+    $mail->Body = str_replace(['{0}', '{1}'], [$safeName, $safeIp], t('mail.pwd_changed.body', false));
 
     $mail->send();
 } catch (Exception $e) {

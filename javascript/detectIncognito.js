@@ -180,23 +180,25 @@ async function detectSafari(browserName) {
 // UI updater
 // ----------------------------------------------------------------------------
 
+import { T } from '../lang/t.js';
+
 export async function updateIncognitoStatus() {
     const el = document.getElementById('incognitoMode');
     if (!el) return;
     try {
         const { status, browserName, reason } = await detectIncognito();
         if (status === 'private') {
-            el.textContent = `ATTIVA (${browserName})`;
+            el.textContent = T('js.bs.incognito.active').replace('{0}', browserName);
         } else if (status === 'normal') {
-            el.textContent = `NON attiva (${browserName})`;
+            el.textContent = T('js.bs.incognito.inactive').replace('{0}', browserName);
         } else {
             // Quando il browser ha disabilitato i segnali di detection
             // diciamo onestamente all'utente che non possiamo saperlo.
-            el.textContent = `Non rilevabile (${browserName})`;
+            el.textContent = T('js.bs.incognito.unknown_browser').replace('{0}', browserName);
             if (reason) el.title = reason;
         }
     } catch (err) {
         console.debug('detectIncognito error:', err && err.message);
-        el.textContent = 'Non rilevabile';
+        el.textContent = T('js.bs.incognito.unknown');
     }
 }

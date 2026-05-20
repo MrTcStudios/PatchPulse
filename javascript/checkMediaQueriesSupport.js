@@ -5,6 +5,8 @@
  * mouse: dava falso negativo su tutti i dispositivi touch. Le Media Queries sono
  * supportate da chiunque abbia `window.matchMedia`, indipendentemente dal puntatore.
  */
+import { T } from '../lang/t.js';
+
 export function checkMediaQueriesSupport() {
     const el = document.getElementById('mediaQueriesSupported');
     if (!el) {
@@ -19,9 +21,9 @@ export function checkMediaQueriesSupport() {
             // Media query banale che dovrebbe sempre matchare (verifica concreta del parser)
             window.matchMedia('all').matches === true;
 
-        el.innerText = supported ? 'Sì' : 'No';
+        el.innerText = supported ? T('js.bs.yes') : T('js.bs.no');
     } catch (err) {
         console.debug('checkMediaQueriesSupport error:', err && err.message);
-        el.innerText = 'No';
+        el.innerText = T('js.bs.no');
     }
 }

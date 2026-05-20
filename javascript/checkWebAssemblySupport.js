@@ -5,6 +5,8 @@
  * (o `'unsafe-eval'`) nella CSP — la CSP del sito non li abilita, ed è giusto così.
  * Quindi ci limitiamo a verificare la presenza dell'oggetto e dei suoi metodi.
  */
+import { T } from '../lang/t.js';
+
 export function checkWebAssemblySupport() {
     const el = document.getElementById('webAssemblySupport');
     if (!el) {
@@ -17,5 +19,5 @@ export function checkWebAssemblySupport() {
         && typeof WebAssembly.compile === 'function'
         && typeof WebAssembly.instantiate === 'function';
 
-    el.innerText = supported ? 'Sì' : 'No';
+    el.innerText = supported ? T('js.bs.yes') : T('js.bs.no');
 }

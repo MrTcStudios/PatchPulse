@@ -8,6 +8,8 @@
  *  - Niente più "any" booleano: indichiamo anche se è solo "coarse pointer"
  *    (mouse/penna su PC convertibile) per ridurre falsi positivi.
  */
+import { T } from '../lang/t.js';
+
 export function checkTouchSupport() {
     const el = document.getElementById('touchSupport');
     try {
@@ -25,19 +27,20 @@ export function checkTouchSupport() {
 
         let text;
         if (isRealTouch) {
-            text = `Sì (max ${maxTouch || 1} punti)`;
+            text = T('js.bs.touch.yes_points').replace('{0}', String(maxTouch || 1));
         } else if (hasOnTouch || coarse) {
             // Solo segnali deboli — il dispositivo "potrebbe" supportare touch
-            text = 'Possibile (segnali deboli)';
+            text = T('js.bs.touch.weak');
         } else {
-            text = 'No';
+            text = T('js.bs.no');
         }
 
         if (el) el.innerText = text;
         return text;
     } catch (err) {
         console.debug('checkTouchSupport error:', err && err.message);
-        if (el) el.innerText = 'No';
-        return 'No';
+        const fallback = T('js.bs.no');
+        if (el) el.innerText = fallback;
+        return fallback;
     }
 }

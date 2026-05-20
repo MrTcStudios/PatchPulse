@@ -8,10 +8,12 @@ header('Content-Type: application/json; charset=UTF-8');
 header('X-Content-Type-Options: nosniff');
 
 session_start();
+require_once __DIR__ . "/../lang/lang.php";
 
+// ── Turnstile verification ──
 $captchaResponse = $_GET['cf-turnstile-response'] ?? '';
 if (empty($captchaResponse)) {
-    echo json_encode(['success' => false, 'error' => 'Captcha richiesto']);
+    echo json_encode(['success' => false, 'error' => t('flash.captcha_required', false)]);
     exit();
 }
 
@@ -37,20 +39,22 @@ if (empty($captchaData['success'])) {
     exit();
 }
 
+// ── Rate limiting ──
 $rateKey = 'breach_requests';
 $now = time();
 $_SESSION[$rateKey] = array_filter($_SESSION[$rateKey] ?? [], fn($t) => ($now - $t) < 60);
 if (count($_SESSION[$rateKey]) >= 5) {
     http_response_code(429);
-    echo json_encode(['success' => false, 'error' => 'Troppe richieste. Riprova tra un minuto.']);
+    echo json_encode(['success' => false, 'error' => t('api.rate_limit', false)]);
     exit();
 }
 $_SESSION[$rateKey][] = $now;
 session_write_close();
 
+// ── Email validation ──
 $email = $_GET['email'] ?? '';
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    echo json_encode(['success' => false, 'error' => 'Email non valida']);
+    echo json_encode(['success' => false, 'error' => t('flash.invalid_email', false)]);
     exit();
 }
 
@@ -67,7 +71,7 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 if ($httpCode !== 200 || $response === false) {
-    echo json_encode(['success' => false, 'error' => 'Errore nella richiesta al servizio']);
+    echo json_encode(['success' => false, 'error' => t('proxy.service_error', false)]);
     exit();
 }
 

@@ -6,6 +6,7 @@ ini_set('session.use_strict_mode', 1);
 ini_set('session.use_only_cookies', 1);
 
 include 'config.php';
+require_once __DIR__ . "/lang/lang.php";
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -18,11 +19,11 @@ $csrfToken = $_SESSION['csrf_token'];
 $isLoggedIn = isset($_SESSION['user_id']);
 ?>
 <!DOCTYPE html>
-<html lang="it">
+<html lang="<?= htmlspecialchars(pp_lang_current(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatchPulse - Browser Scanner</title>
+    <title><?= t('bs.title_tag') ?></title>
     <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
@@ -38,17 +39,17 @@ $isLoggedIn = isset($_SESSION['user_id']);
             PatchPulse
         </a>
         <div style="display:flex;align-items:center;gap:0.5rem">
-            <button class="bell-btn" title="Notifiche" aria-label="Notifiche">
+            <button class="bell-btn" title="<?= t('nav.notifications') ?>" aria-label="<?= t('nav.notifications') ?>">
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             </button>
-            <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+            <button class="hamburger" id="hamburger" aria-label="<?= t('nav.menu') ?>"><span></span><span></span><span></span></button>
         </div>
     </div>
 
     <!-- Search -->
     <div class="search-bar">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:#666;flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" placeholder="Search" aria-label="Search">
+        <input type="text" placeholder="<?= t('nav.search_placeholder') ?>" aria-label="<?= t('nav.search_placeholder') ?>">
         <span class="search-shortcut">S</span>
     </div>
 
@@ -56,27 +57,27 @@ $isLoggedIn = isset($_SESSION['user_id']);
     <div class="nav-section">
         <a href="home.php" class="nav-item" data-section="home">
             <span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
-            Homepage
+            <?= t('nav.homepage') ?>
         </a>
         <a href="home.php#servizi" class="nav-item">
             <span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
-            Applications
+            <?= t('nav.applications') ?>
         </a>
         <a href="browser-scan.php" class="nav-item active">
             <span class="nav-sub-icon"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></span>
-            Browser Scanner
+            <?= t('nav.browser_scanner') ?>
         </a>
         <a href="VulnerabilityScanner.php" class="nav-item">
             <span class="nav-sub-icon"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></span>
-            Website Overview
+            <?= t('nav.website_overview') ?>
         </a>
         <a href="vpn-checker.php" class="nav-item">
             <span class="nav-sub-icon"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></span>
-            VPN Checker
+            <?= t('nav.vpn_checker') ?>
         </a>
         <a href="data-breach-checker.php" class="nav-item">
             <span class="nav-sub-icon"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></span>
-            Data Breach Monitor
+            <?= t('nav.data_breach_monitor') ?>
         </a>
     </div>
 
@@ -86,22 +87,22 @@ $isLoggedIn = isset($_SESSION['user_id']);
     <div class="sidebar-bottom">
         <a href="home.php#faq" class="nav-item">
             <span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-            FAQ
+            <?= t('nav.faq') ?>
         </a>
         <?php if ($isLoggedIn): ?>
         <a href="account.php" class="nav-item">
             <span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-            Area Personale
+            <?= t('nav.account') ?>
         </a>
         <?php else: ?>
         <a href="log-reg.php#login" class="nav-item">
             <span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></span>
-            Login
+            <?= t('nav.login') ?>
         </a>
         <?php endif; ?>
-        <a href="#" class="nav-item">
+        <a href="settings.php" class="nav-item">
             <span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></span>
-            Settings
+            <?= t('nav.settings') ?>
         </a>
     </div>
 </aside>
@@ -115,11 +116,11 @@ $isLoggedIn = isset($_SESSION['user_id']);
         <div class="page-header-content">
             <a href="home.php" class="page-header-back">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-                Torna alla Home
+                <?= t('nav.back_home') ?>
             </a>
-            <p class="page-header-eyebrow">Scanner di Sicurezza</p>
-            <h1 class="page-header-title">Browser Scanner</h1>
-            <p class="page-header-desc">Analizza cosa il tuo browser rivela sui tuoi dati personali e sulle tue informazioni di navigazione.</p>
+            <p class="page-header-eyebrow"><?= t('bs.eyebrow') ?></p>
+            <h1 class="page-header-title"><?= t('bs.title') ?></h1>
+            <p class="page-header-desc"><?= t('bs.desc') ?></p>
         </div>
     </div>
 
@@ -128,9 +129,9 @@ $isLoggedIn = isset($_SESSION['user_id']);
         <div class="scanner-card">
         <!-- Tab buttons -->
         <div class="tab-bar">
-            <button class="tab-btn active" data-scan="webTracking">🔍 Web Tracking</button>
-            <button class="tab-btn" data-scan="functionality">⚙️ Functionality Support</button>
-            <button class="tab-btn" data-scan="deviceInfo">💻 Device Information</button>
+            <button class="tab-btn active" data-scan="webTracking"><?= t('bs.tab.tracking') ?></button>
+            <button class="tab-btn" data-scan="functionality"><?= t('bs.tab.functionality') ?></button>
+            <button class="tab-btn" data-scan="deviceInfo"><?= t('bs.tab.device') ?></button>
         </div>
 
         <!-- Save All Scans (solo se loggato) -->
@@ -138,7 +139,7 @@ $isLoggedIn = isset($_SESSION['user_id']);
         <div class="save-bar">
             <button id="saveScansButton" class="btn-save">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                Salva tutte le scansioni
+                <?= t('bs.save_all') ?>
             </button>
         </div>
         <?php endif; ?>
@@ -317,39 +318,40 @@ $isLoggedIn = isset($_SESSION['user_id']);
         <div class="footer-grid">
             <div class="footer-col">
                 <h4>PatchPulse</h4>
-                <p>Scanner di sicurezza gratuiti per migliorare la tua sicurezza online. Identifica vulnerabilità e rischi di privacy.</p>
+                <p><?= t('footer.tagline') ?></p>
             </div>
             <div class="footer-col">
-                <h4>Scanner</h4>
-                <a href="browser-scan.php">Browser Scanner</a>
-                <a href="VulnerabilityScanner.php">Website Vulnerability Scanner</a>
-                <a href="vpn-checker.php">VPN Security Checker</a>
-                <a href="data-breach-checker.php">Data Breach Checker</a>
-                <a href="#">Coming Soon...</a>
+                <h4><?= t('footer.col.scanners') ?></h4>
+                <a href="browser-scan.php"><?= t('footer.scanner.browser') ?></a>
+                <a href="VulnerabilityScanner.php"><?= t('footer.scanner.vulnerability') ?></a>
+                <a href="vpn-checker.php"><?= t('footer.scanner.vpn') ?></a>
+                <a href="data-breach-checker.php"><?= t('footer.scanner.breach') ?></a>
+                <a href="#"><?= t('footer.scanner.coming') ?></a>
             </div>
             <div class="footer-col">
-                <h4>Contatti</h4>
+                <h4><?= t('footer.col.contacts') ?></h4>
                 <p>Email: support@patchpulse.com</p>
                 <a href="https://github.com/MrTcStudios/PatchPulse" target="_blank">GitHub MrTcStudios/PatchPulse</a>
             </div>
             <div class="footer-col">
-                <h4>Risorse</h4>
-                <a href="account.php">Area Account</a>
-                <a href="home.php#about">Documentazione</a>
-                <a href="home.php#faq">FAQ</a>
+                <h4><?= t('footer.col.resources') ?></h4>
+                <a href="account.php"><?= t('footer.account_area') ?></a>
+                <a href="home.php#about"><?= t('footer.documentation') ?></a>
+                <a href="home.php#faq"><?= t('nav.faq') ?></a>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; <?= date('Y') ?> PatchPulse. Tutti i diritti riservati.
-                <a href="policy/privacy_policy.php" target="_blank">Privacy Policy</a>
-                <a href="policy/terms&condition.php" target="_blank">Terms of Service</a>
-            	<a href="policy/security-policy.php" target="_blank">Security Policy</a>
+            <p>&copy; <?= date('Y') ?> PatchPulse. <?= t('footer.rights') ?>
+                <a href="policy/privacy_policy.php" target="_blank"><?= t('footer.privacy') ?></a>
+                <a href="policy/terms&condition.php" target="_blank"><?= t('footer.terms') ?></a>
+            	<a href="policy/security-policy.php" target="_blank"><?= t('footer.security') ?></a>
 	    </p>
         </div>
     </footer>
 
 </main>
 
+<?php pp_lang_emit_js(); ?>
 <script src="script.js"></script>
 <script type="module" src="javascript/fastScan.js"></script>
 </body>

@@ -10,6 +10,8 @@ ini_set('session.use_only_cookies', 1);
 
 session_start();
 
+require_once __DIR__ . "/../lang/lang.php";
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../log-reg.php");
     exit();
@@ -20,16 +22,18 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     exit();
 }
 
+// CSRF
 $csrfToken = $_POST['csrf_token'] ?? '';
 if (empty($csrfToken) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
-    $_SESSION['account_delete_message'] = "Richiesta non valida. Riprova.";
+    $_SESSION['account_delete_message'] = "flash.invalid_request";
     header("Location: ../account.php");
     exit();
 }
 
+// Richiedi password per confermare operazione critica
 $password = $_POST['current_password'] ?? '';
 if (empty($password)) {
-    $_SESSION['account_delete_message'] = "Inserisci la password per confermare l'eliminazione.";
+    $_SESSION['account_delete_message'] = "flash.account.delete_need_pwd";
     header("Location: ../account.php");
     exit();
 }
@@ -48,13 +52,14 @@ $db_pass = getenv('DB_PASS');
 
 $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
 if ($conn->connect_error) {
-    $_SESSION['account_delete_message'] = "Errore interno. Riprova.";
+    $_SESSION['account_delete_message'] = "flash.internal_error_retry";
     header("Location: ../account.php");
     exit();
 }
 
 $user_id = (int)$_SESSION['user_id'];
 
+// Verifica password
 $stmt = $conn->prepare("SELECT email, name, password FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -63,12 +68,13 @@ $stmt->fetch();
 $stmt->close();
 
 if (!$user_email || !password_verify($password, $hashed_password)) {
-    $_SESSION['account_delete_message'] = "Password non corretta.";
+    $_SESSION['account_delete_message'] = "flash.email.wrong_password";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
 
+// Genera token di eliminazione (32 bytes = 64 hex)
 $token = bin2hex(random_bytes(32));
 $expires_at = date("Y-m-d H:i:s", strtotime("+1 hour"));
 
@@ -76,7 +82,7 @@ $stmt = $conn->prepare("UPDATE users SET deletion_token = ?, deletion_token_expi
 $stmt->bind_param("ssi", $token, $expires_at, $user_id);
 
 if (!$stmt->execute()) {
-    $_SESSION['account_delete_message'] = "Errore interno. Riprova.";
+    $_SESSION['account_delete_message'] = "flash.internal_error_retry";
     $stmt->close();
     $conn->close();
     header("Location: ../account.php");
@@ -84,6 +90,7 @@ if (!$stmt->execute()) {
 }
 $stmt->close();
 
+// Email di conferma
 $appDomain = getenv('APP_DOMAIN') ?: 'patchpulse.org';
 $confirmation_link = "https://{$appDomain}/dataBase/confirm_deletion.php?token=" . urlencode($token);
 
@@ -105,14 +112,14 @@ try {
     $mail->addAddress($user_email);
 
     $mail->isHTML(true);
-    $mail->Subject = 'Conferma Eliminazione Account';
-    $mail->Body = "<p>Ciao {$safeName},</p><p>Hai richiesto di eliminare il tuo account. Clicca per confermare:</p><p><a href='{$safeLink}'>Conferma Eliminazione</a></p><p>Il link scade tra 1 ora. Se non hai richiesto questa operazione, ignora questa email e cambia la tua password.</p><p>Il Team di PatchPulse</p>";
+    $mail->Subject = t('mail.delete_acc.subject', false);
+    $mail->Body = str_replace(['{0}', '{1}'], [$safeName, $safeLink], t('mail.delete_acc.body', false));
 
     $mail->send();
-    $_SESSION['account_delete_message'] = "Email di conferma inviata. Controlla la tua casella.";
+    $_SESSION['account_delete_message'] = "flash.account.delete_email_sent";
 } catch (Exception $e) {
     error_log("PHPMailer error: " . $mail->ErrorInfo);
-    $_SESSION['account_delete_message'] = "Errore nell'invio dell'email. Riprova.";
+    $_SESSION['account_delete_message'] = "flash.account.delete_send_failed";
 }
 
 $conn->close();

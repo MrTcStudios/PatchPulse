@@ -1,4 +1,5 @@
 <?php
+// Mostra errori temporaneamente per debug — rimuovi in produzione
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
@@ -9,56 +10,61 @@ ini_set('session.use_strict_mode', 1);
 ini_set('session.use_only_cookies', 1);
 
 include("../config.php");
+require_once __DIR__ . "/../lang/lang.php";
 
+header('Content-Type: application/json');
+
+// Helper: emit a JSON error and stop. Decouples frontend from response text.
+function pp_save_error(int $code, string $key): void {
+    http_response_code($code);
+    echo json_encode(['success' => false, 'error' => t($key, false), 'code' => $key]);
+    exit;
+}
+
+// Chiave di cifratura da variabile d'ambiente
 $encKey = getenv('ENC_KEY');
 if (empty($encKey)) {
-    http_response_code(500);
-    exit('Chiave di cifratura non configurata');
+    pp_save_error(500, 'flash.internal_error');
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    exit('Metodo non consentito');
+    pp_save_error(405, 'vd.method_not_allowed');
 }
 
 if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    exit('Non autorizzato');
+    pp_save_error(401, 'vd.unauthorized');
 }
 
+// Leggi JSON body
 $rawInput = file_get_contents('php://input');
 if (empty($rawInput)) {
-    http_response_code(400);
-    exit('Nessun dato ricevuto');
+    pp_save_error(400, 'vd.invalid_request');
 }
 
 $input = json_decode($rawInput, true);
 if (!is_array($input)) {
-    http_response_code(400);
-    exit('JSON non valido');
+    pp_save_error(400, 'vd.json_invalid');
 }
 
 if (!isset($input['csrf_token']) || !isset($input['data'])) {
-    http_response_code(400);
-    exit('Campi mancanti');
+    pp_save_error(400, 'vd.invalid_request');
 }
 
+// CSRF
 $csrfToken = $input['csrf_token'];
 if (empty($csrfToken) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
-    http_response_code(403);
-    exit('Token CSRF non valido');
+    pp_save_error(403, 'vd.csrf_invalid');
 }
 
+// Decodifica: base64 → JSON → array
 $decoded = base64_decode($input['data'], true);
 if ($decoded === false) {
-    http_response_code(400);
-    exit('Base64 non valido');
+    pp_save_error(400, 'vd.invalid_request');
 }
 
 $scanData = json_decode($decoded, true);
 if (!is_array($scanData)) {
-    http_response_code(400);
-    exit('Dati scan non validi');
+    pp_save_error(400, 'vd.json_invalid');
 }
 
 $user_id = (int)$_SESSION['user_id'];
@@ -103,13 +109,13 @@ $sql = "INSERT INTO scans (user_id," . implode(',', $fields) . ") VALUES ($place
 $stmt = $conn->prepare($sql);
 
 if (!$stmt) {
-    http_response_code(500);
-    exit('Errore prepare: ' . $conn->error);
+    pp_save_error(500, 'flash.internal_error');
 }
 
 $stmt->bind_param($types, $user_id, ...$encryptedValues);
 
 if ($stmt->execute()) {
+    // Log attività
     $user_ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'unknown';
     if (!filter_var($user_ip, FILTER_VALIDATE_IP)) $user_ip = 'unknown';
     $log = $conn->prepare("INSERT INTO activity_logs (user_id, action, ip_address) VALUES (?, 'browser_scan_saved', ?)");
@@ -117,10 +123,9 @@ if ($stmt->execute()) {
     $log->execute();
     $log->close();
 
-    echo "Scans salvati con successo";
+    echo json_encode(['success' => true]);
 } else {
-    http_response_code(500);
-    exit('Errore execute: ' . $stmt->error);
+    pp_save_error(500, 'flash.internal_error');
 }
 
 $stmt->close();

@@ -3,6 +3,8 @@
  * Ordine di check importante: i browser "derivati" devono essere controllati PRIMA di Chrome,
  * altrimenti Edge/Opera/Brave/Vivaldi vengono erroneamente identificati come Chrome.
  */
+import { T } from '../lang/t.js';
+
 export function checkBrowserType() {
     const browserType = detectBrowser();
     const el = document.getElementById('browserType');
@@ -74,5 +76,5 @@ export function detectBrowser() {
         return 'Apple Safari';
     }
 
-    return 'Sconosciuto';
+    return T('js.bs.unknown');
 }

@@ -5,8 +5,8 @@ ini_set('session.cookie_samesite', 'Strict');
 ini_set('session.use_strict_mode', 1);
 ini_set('session.use_only_cookies', 1);
 
-ini_set('session.gc_maxlifetime', 3600);
-ini_set('session.cookie_lifetime', 0);
+ini_set('session.gc_maxlifetime', 3600); // 1 ora
+ini_set('session.cookie_lifetime', 0);   // fino a chiusura browser
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -29,6 +29,7 @@ if ($conn->connect_error) {
     exit('Database connection failed.');
 }
 
+// Manutenzione: controlla dal DB (il filesystem è read-only)
 if (!isset($_SESSION['admin']) || $_SESSION['admin'] !== true) {
     $mStmt = $conn->prepare("SELECT setting_value FROM site_settings WHERE setting_key = 'maintenance_mode'");
     if ($mStmt) {

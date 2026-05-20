@@ -9,6 +9,8 @@
  * Comportamento attuale: mostriamo i thread logici (dato preciso) e
  * indichiamo che il numero di core fisici NON è esposto dal browser.
  */
+import { T } from '../lang/t.js';
+
 export function getCPUThreadsAndCores() {
     const threadsEl = document.getElementById('cpuThreads');
     const coresEl   = document.getElementById('cpuCores');
@@ -18,8 +20,8 @@ export function getCPUThreadsAndCores() {
 
     if (threadsEl) {
         threadsEl.innerText = hasValue
-            ? `${logical} thread logici`
-            : 'Non disponibile';
+            ? T('js.bs.cpu.threads').replace('{0}', String(logical))
+            : T('js.bs.unavailable');
     } else {
         console.warn('Elemento con id "cpuThreads" non trovato.');
     }
@@ -27,8 +29,8 @@ export function getCPUThreadsAndCores() {
     if (coresEl) {
         // Il browser non espone il numero di core fisici. Diciamolo.
         coresEl.innerText = hasValue
-            ? 'Non esposto dal browser'
-            : 'Non disponibile';
+            ? T('js.bs.cpu.not_exposed')
+            : T('js.bs.unavailable');
     } else {
         console.warn('Elemento con id "cpuCores" non trovato.');
     }

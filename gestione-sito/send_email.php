@@ -10,6 +10,7 @@ ini_set('session.use_only_cookies', 1);
 
 include("../config.php");
 
+// Verifica admin
 if (!isset($_SESSION['admin']) || $_SESSION['admin'] !== true) {
     header("Location: index.php");
     exit;
@@ -20,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// CSRF
 $csrfToken = $_POST['csrf_token'] ?? '';
 if (empty($csrfToken) || !isset($_SESSION['admin_csrf']) || !hash_equals($_SESSION['admin_csrf'], $csrfToken)) {
     $_SESSION['admin_error'] = "Richiesta non valida.";
@@ -43,6 +45,7 @@ if (empty($subject) || empty($message)) {
     exit;
 }
 
+// Limiti ragionevoli
 if (mb_strlen($subject) > 200) {
     $_SESSION['admin_error'] = "Oggetto troppo lungo (max 200 caratteri).";
     header("Location: dashboard.php");
@@ -54,9 +57,11 @@ if (mb_strlen($message) > 10000) {
     exit;
 }
 
+// Sanitizza: escape HTML, poi converti newline in <br>
 $safeSubject = htmlspecialchars($subject, ENT_QUOTES, 'UTF-8');
 $safeMessage = nl2br(htmlspecialchars($message, ENT_QUOTES, 'UTF-8'));
 
+// Recupera utenti
 $stmt = $conn->prepare("SELECT email FROM users WHERE is_confirmed = TRUE");
 $stmt->execute();
 $result = $stmt->get_result();
@@ -72,7 +77,8 @@ $totalEmails = $result->num_rows;
 $sentEmails = 0;
 $errors = 0;
 
-set_time_limit(300);
+// Time limit ragionevole (non infinito)
+set_time_limit(300); // 5 minuti max
 
 while ($row = $result->fetch_assoc()) {
     $email = $row['email'];

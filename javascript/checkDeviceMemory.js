@@ -6,6 +6,8 @@
  *  - Il valore "8" significa "≥ 8 GB" (capped).
  *  - L'API non è supportata da Firefox/Safari → mostriamo messaggio chiaro.
  */
+import { T } from '../lang/t.js';
+
 export function checkDeviceMemory() {
     const el = document.getElementById('deviceMemory');
     if (!el) {
@@ -17,13 +19,13 @@ export function checkDeviceMemory() {
 
     if (typeof mem === 'number' && mem > 0) {
         if (mem >= 8) {
-            el.innerText = '≥ 8 GB (limite massimo esposto dall\'API)';
+            el.innerText = T('js.bs.devmem.max');
         } else if (mem < 1) {
             el.innerText = `${mem} GB (≈ ${Math.round(mem * 1024)} MB)`;
         } else {
-            el.innerText = `${mem} GB (approssimazione fornita dal browser)`;
+            el.innerText = `${mem} GB ${T('js.bs.devmem.approx_suffix')}`;
         }
     } else {
-        el.innerText = 'Non disponibile (API non supportata)';
+        el.innerText = T('js.bs.devmem.unsupported');
     }
 }

@@ -7,12 +7,15 @@
  *    e prima crashava con "JSON.parse: unexpected character").
  *  - Same-origin → niente esposizione/leak a server esterni.
  */
+import { T } from '../lang/t.js';
+
 export function getPublicIpAddresses() {
     const update = (ipv4, ipv6) => {
         const v4El = document.getElementById('publicIpv4');
         const v6El = document.getElementById('publicIpv6');
-        if (v4El) v4El.innerText = ipv4 || 'N/D';
-        if (v6El) v6El.innerText = ipv6 || 'N/D';
+        const nd = T('js.bs.nd');
+        if (v4El) v4El.innerText = ipv4 || nd;
+        if (v6El) v6El.innerText = ipv6 || nd;
     };
 
     const run = () => {

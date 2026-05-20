@@ -1,11 +1,17 @@
+<?php
+// Caller (save_user.php) loads this template; ensure t() is available.
+// Doesn't matter if pp_lang_resolve has no session at that point —
+// t() falls back to default language safely.
+require_once __DIR__ . "/../lang/lang.php";
+?>
 <!DOCTYPE html>
-<html lang="it">
+<html lang="<?= htmlspecialchars(pp_lang_current(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light">
     <meta name="supported-color-schemes" content="light">
-    <title>Conferma la tua registrazione a PatchPulse</title>
+    <title><?= t('mail.confirm.title_tag') ?></title>
     <style>
         :root { color-scheme: light only; }
         body {
@@ -49,6 +55,7 @@
             text-align: center;
             margin: 30px 0;
         }
+        /* Bulletproof button — funziona su tutti i client email */
         .button {
             display: inline-block;
             background-color: #8b7cf8 !important;
@@ -91,33 +98,33 @@
 <body style="background-color:#f4f4f4;margin:0;padding:0;">
     <div class="container" style="background-color:#ffffff;">
         <div class="logo" style="color:#8b7cf8;">PatchPulse</div>
-        <h1 style="color:#1a1a1a;">Conferma la tua registrazione</h1>
+        <h1 style="color:#1a1a1a;"><?= t('mail.confirm.h1') ?></h1>
 
-        <p style="color:#555555;">Ciao,</p>
-        <p style="color:#555555;">Grazie per esserti unito a noi! Clicca sul pulsante qui sotto per confermare la tua registrazione.</p>
+        <p style="color:#555555;"><?= t('mail.greeting') ?></p>
+        <p style="color:#555555;"><?= t('mail.confirm.intro') ?></p>
 
         <div class="button-container">
             <!--[if mso]>
             <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="YOUR_LINK" style="height:48px;v-text-anchor:middle;width:220px;" arcsize="50%" fill="t">
                 <v:fill type="tile" color="#8b7cf8" />
                 <w:anchorlock/>
-                <center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:bold;">Conferma Account</center>
+                <center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:bold;"><?= t('mail.confirm.button') ?></center>
             </v:roundrect>
             <![endif]-->
             <!--[if !mso]><!-->
-            <a href="YOUR_LINK" class="button" style="background-color:#8b7cf8;color:#ffffff;display:inline-block;padding:14px 28px;border-radius:50px;text-decoration:none;font-size:16px;font-weight:600;">Conferma il tuo account</a>
+            <a href="YOUR_LINK" class="button" style="background-color:#8b7cf8;color:#ffffff;display:inline-block;padding:14px 28px;border-radius:50px;text-decoration:none;font-size:16px;font-weight:600;"><?= t('mail.confirm.button') ?></a>
             <!--<![endif]-->
         </div>
 
-        <p style="color:#999999;font-size:14px;">Se il pulsante non funziona, copia e incolla questo link nel browser:</p>
+        <p style="color:#999999;font-size:14px;"><?= t('mail.confirm.fallback') ?></p>
         <p><a href="YOUR_LINK" class="link" style="color:#8b7cf8;">YOUR_LINK</a></p>
 
-        <p style="color:#999999;font-size:14px;">Se non hai effettuato questa registrazione, ignora questa email.</p>
+        <p style="color:#999999;font-size:14px;"><?= t('mail.confirm.disclaimer') ?></p>
 
         <div class="footer" style="color:#999999;">
-            <p>&copy; <?php echo date("Y"); ?> PatchPulse. Tutti i diritti riservati.</p>
+            <p>&copy; <?php echo date("Y"); ?> PatchPulse. <?= t('mail.footer.rights') ?></p>
             <p>
-                <a href="https://patchpulse.org/policy/privacy_policy.php" style="color:#8b7cf8;">Privacy Policy</a>
+                <a href="https://patchpulse.org/policy/privacy_policy.php" style="color:#8b7cf8;"><?= t('mail.footer.privacy') ?></a>
             </p>
             <p>PatchPulse</p>
         </div>

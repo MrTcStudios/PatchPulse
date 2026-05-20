@@ -6,6 +6,8 @@
  *
  * @returns {Promise<boolean>} true se AdBlocker rilevato
  */
+import { T } from '../lang/t.js';
+
 export function checkAdBlockEnabled() {
     return new Promise((resolve) => {
         // Crea bait con nomi che le filter list bloccano in modo molto consistente.
@@ -61,7 +63,7 @@ export function checkAdBlockEnabled() {
 
                 const out = document.getElementById('adBlockEnabled');
                 if (out) {
-                    out.innerText = adBlockDetected ? 'Sì' : 'No';
+                    out.innerText = adBlockDetected ? T('js.bs.yes') : T('js.bs.no');
                     out.dataset.detected = String(adBlockDetected);
                 } else {
                     console.warn('Elemento con id "adBlockEnabled" non trovato.');

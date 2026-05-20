@@ -2,6 +2,8 @@
  * Verifica il supporto alla Permissions API.
  * Null check sull'elemento e check più stretto su `query`.
  */
+import { T } from '../lang/t.js';
+
 export function checkPermissionsAPISupport() {
     const el = document.getElementById('permissionsAPISupported');
     if (!el) {
@@ -14,5 +16,5 @@ export function checkPermissionsAPISupport() {
         && navigator.permissions
         && typeof navigator.permissions.query === 'function';
 
-    el.innerText = supported ? 'Sì' : 'No';
+    el.innerText = supported ? T('js.bs.yes') : T('js.bs.no');
 }

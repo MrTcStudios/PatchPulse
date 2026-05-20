@@ -5,8 +5,10 @@ ini_set('session.cookie_samesite', 'Strict');
 
 session_start();
 
+// Pulisci sessione
 $_SESSION = [];
 
+// Elimina cookie di sessione
 if (ini_get("session.use_cookies")) {
     $params = session_get_cookie_params();
     setcookie(session_name(), '', time() - 42000,

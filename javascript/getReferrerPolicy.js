@@ -7,6 +7,8 @@
  *  - Fallback: meta tag <meta name="referrer">.
  *  - "no-referrer-when-downgrade" è il default browser → lo indichiamo.
  */
+import { T } from '../lang/t.js';
+
 export function getReferrerPolicy() {
     const el = document.getElementById('referrerPolicy');
     if (!el) {
@@ -25,7 +27,7 @@ export function getReferrerPolicy() {
 
     if (!policy) {
         // Default del browser quando non specificata
-        el.innerText = 'strict-origin-when-cross-origin (default)';
+        el.innerText = T('js.bs.referrer.default');
         return;
     }
 

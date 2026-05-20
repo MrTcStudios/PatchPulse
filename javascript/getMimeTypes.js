@@ -7,6 +7,8 @@
  *    Questo è atteso, NON è un bug.
  *  - In Safari/iOS e in Firefox la lista è quasi sempre vuota.
  */
+import { T } from '../lang/t.js';
+
 export function getMimeTypes() {
     const el = document.getElementById('mimeTypes');
     if (!el) {
@@ -28,7 +30,7 @@ export function getMimeTypes() {
     }
 
     if (unique.length === 0) {
-        el.innerText = 'Nessuno (i browser moderni espongono pochissimi MIME type)';
+        el.innerText = T('js.bs.mime.empty');
         el.removeAttribute('title');
         return [];
     }
@@ -36,6 +38,6 @@ export function getMimeTypes() {
     const text = unique.join(', ');
     el.innerText = text;
     el.setAttribute('title', text);
-    el.setAttribute('aria-label', `Tipi MIME supportati: ${text}`);
+    el.setAttribute('aria-label', T('js.bs.mime.aria_label').replace('{0}', text));
     return unique;
 }

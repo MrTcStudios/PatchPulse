@@ -7,6 +7,8 @@
  * Non chiama mai navigator.geolocation.getCurrentPosition: la richiesta vera
  * è gestita da getLocation.js, dove l'utente acconsente esplicitamente.
  */
+import { T } from '../lang/t.js';
+
 export function checkGeolocation() {
     const el = document.getElementById('geolocationInfo');
     if (!el) {
@@ -15,13 +17,13 @@ export function checkGeolocation() {
     }
 
     if (!('geolocation' in navigator)) {
-        el.textContent = 'Geolocalizzazione non supportata dal browser.';
+        el.textContent = T('js.bs.geo.unsupported');
         return;
     }
 
     if (!navigator.permissions || typeof navigator.permissions.query !== 'function') {
         // Permissions API non disponibile (Safari fino a recente): ci limitiamo a dire "supportata"
-        el.textContent = 'Disponibile (richiede consenso)';
+        el.textContent = T('js.bs.geo.available_prompt');
         return;
     }
 
@@ -29,19 +31,19 @@ export function checkGeolocation() {
         .then((result) => {
             switch (result.state) {
                 case 'granted':
-                    el.textContent = 'Permesso concesso';
+                    el.textContent = T('js.bs.geo.granted');
                     break;
                 case 'prompt':
-                    el.textContent = 'Disponibile (richiede consenso)';
+                    el.textContent = T('js.bs.geo.available_prompt');
                     break;
                 case 'denied':
-                    el.textContent = 'Permesso negato';
+                    el.textContent = T('js.bs.geo.denied_perm');
                     break;
                 default:
-                    el.textContent = 'Stato sconosciuto';
+                    el.textContent = T('js.bs.geo.unknown_state');
             }
         })
         .catch(() => {
-            el.textContent = 'Stato non verificabile';
+            el.textContent = T('js.bs.geo.unverifiable');
         });
 }

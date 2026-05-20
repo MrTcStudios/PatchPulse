@@ -1,13 +1,3 @@
-/**
- * PatchPulse — script unificato di tutto il sito.
- *
- * Tutti gli script inline che erano sparsi nei .php sono stati spostati qui
- * in modo da poter rimuovere `'unsafe-inline'` dalla `script-src` della CSP.
- *
- * Pattern: ogni sezione è racchiusa in un IIFE e gated da un check di esistenza
- * dell'elemento principale; se non c'è, la sezione non fa nulla. Questo permette
- * di avere un solo file caricato in tutte le pagine senza interferenze.
- */
 (function () {
     'use strict';
 
@@ -20,6 +10,16 @@
         const d = document.createElement('div');
         d.textContent = (s == null) ? '' : String(s);
         return d.innerHTML;
+    };
+
+    // i18n lookup. Falls back to the key itself if PP_I18N is missing or the
+    // key is not present — so missing translations are visible but never crash.
+    const T = (key) => {
+        const i18n = (typeof window !== 'undefined') ? window.PP_I18N : null;
+        if (i18n && i18n.strings && Object.prototype.hasOwnProperty.call(i18n.strings, key)) {
+            return i18n.strings[key];
+        }
+        return key;
     };
 
     document.addEventListener('DOMContentLoaded', init);
@@ -243,18 +243,18 @@
             if (isLoginForm) {
                 loginForm.classList.remove('active');
                 registerForm.classList.add('active');
-                if (formTitle)    formTitle.textContent    = 'Registrati';
-                if (formSubtitle) formSubtitle.textContent = 'Crea il tuo account PatchPulse';
-                if (toggleText)   toggleText.textContent   = 'Hai già un account?';
-                if (toggleBtn)    toggleBtn.textContent    = 'Accedi qui';
+                if (formTitle)    formTitle.textContent    = T('js.auth.title_register');
+                if (formSubtitle) formSubtitle.textContent = T('js.auth.subtitle_register');
+                if (toggleText)   toggleText.textContent   = T('js.auth.toggle_to_login');
+                if (toggleBtn)    toggleBtn.textContent    = T('js.auth.btn_to_login');
                 isLoginForm = false;
             } else {
                 registerForm.classList.remove('active');
                 loginForm.classList.add('active');
-                if (formTitle)    formTitle.textContent    = 'Accedi';
-                if (formSubtitle) formSubtitle.textContent = 'Benvenuto di nuovo su PatchPulse';
-                if (toggleText)   toggleText.textContent   = 'Non hai un account?';
-                if (toggleBtn)    toggleBtn.textContent    = 'Registrati qui';
+                if (formTitle)    formTitle.textContent    = T('js.auth.title_login');
+                if (formSubtitle) formSubtitle.textContent = T('js.auth.subtitle_login');
+                if (toggleText)   toggleText.textContent   = T('js.auth.toggle_to_register');
+                if (toggleBtn)    toggleBtn.textContent    = T('js.auth.btn_to_register');
                 isLoginForm = true;
             }
         }
@@ -265,18 +265,18 @@
             registerForm.classList.remove('active');
             forgotForm.classList.add('active');
 
-            if (formTitle)    formTitle.textContent    = 'Recupera Password';
-            if (formSubtitle) formSubtitle.textContent = 'Inserisci la tua email per ricevere il link di reset';
-            if (toggleText)   toggleText.textContent   = 'Ricordi la password?';
+            if (formTitle)    formTitle.textContent    = T('js.auth.title_forgot');
+            if (formSubtitle) formSubtitle.textContent = T('js.auth.subtitle_forgot');
+            if (toggleText)   toggleText.textContent   = T('js.auth.toggle_forgot');
             if (toggleBtn) {
-                toggleBtn.textContent = 'Torna al login';
+                toggleBtn.textContent = T('js.auth.btn_back_login');
                 toggleBtn.onclick = function () {
                     forgotForm.classList.remove('active');
                     loginForm.classList.add('active');
-                    if (formTitle)    formTitle.textContent    = 'Accedi';
-                    if (formSubtitle) formSubtitle.textContent = 'Benvenuto di nuovo su PatchPulse';
-                    if (toggleText)   toggleText.textContent   = 'Non hai un account?';
-                    if (toggleBtn)    toggleBtn.textContent    = 'Registrati qui';
+                    if (formTitle)    formTitle.textContent    = T('js.auth.title_login');
+                    if (formSubtitle) formSubtitle.textContent = T('js.auth.subtitle_login');
+                    if (toggleText)   toggleText.textContent   = T('js.auth.toggle_to_register');
+                    if (toggleBtn)    toggleBtn.textContent    = T('js.auth.btn_to_register');
                     toggleBtn.onclick = toggleForm;
                     isLoginForm = true;
                 };
@@ -312,11 +312,11 @@
             if (!password || !confirmPassword) return;
             const pw  = password.value;
             const cpw = confirmPassword.value;
-            if (pw !== cpw) { e.preventDefault(); alert('Le password non coincidono!'); return false; }
-            if (pw.length < 8) { e.preventDefault(); alert('La password deve avere almeno 8 caratteri.'); return false; }
+            if (pw !== cpw) { e.preventDefault(); alert(T('js.auth.pwd_mismatch')); return false; }
+            if (pw.length < 8) { e.preventDefault(); alert(T('js.auth.pwd_too_short')); return false; }
             if (!/[A-Z]/.test(pw) || !/[a-z]/.test(pw) || !/[0-9]/.test(pw)) {
                 e.preventDefault();
-                alert('La password deve contenere almeno una maiuscola, una minuscola e un numero.');
+                alert(T('js.auth.pwd_complexity'));
                 return false;
             }
         });
@@ -426,7 +426,7 @@
             }
 
             const btn = document.getElementById('saveScansButton');
-            if (btn) { btn.disabled = true; btn.textContent = 'Salvataggio...'; }
+            if (btn) { btn.disabled = true; btn.textContent = T('js.scan.saving'); }
 
             const scanData = {};
             for (const id of ids) {
@@ -456,23 +456,27 @@
                     },
                     body: payload
                 });
-                const text = await response.text();
-                console.log('Save response:', response.status, text);
-                if (response.ok && text.includes('successo')) {
+                // Parse JSON response. Old endpoint emitted a plain-text Italian
+                // string; the new contract is { success: true } or { success: false, error }.
+                let json = null;
+                try { json = await response.json(); } catch (_) { json = null; }
+
+                if (response.ok && json && json.success === true) {
                     if (btn) {
-                        btn.textContent = '✓ Salvato';
+                        btn.textContent = T('js.scan.saved_ok');
                         setTimeout(() => {
                             btn.disabled = false;
-                            btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salva tutte le scansioni';
+                            btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> ' + escHtml(T('js.scan.save_all'));
                         }, 2000);
                     }
                 } else {
-                    console.error('Save failed:', text);
-                    if (btn) { btn.disabled = false; btn.textContent = 'Errore: ' + text.substring(0, 50); }
+                    const errMsg = (json && json.error) ? String(json.error) : T('js.scan.save_failed');
+                    console.error('Save failed:', errMsg);
+                    if (btn) { btn.disabled = false; btn.textContent = T('js.scan.error_prefix') + errMsg.substring(0, 80); }
                 }
             } catch (err) {
                 console.error('Save error:', err);
-                if (btn) { btn.disabled = false; btn.textContent = 'Errore di connessione'; }
+                if (btn) { btn.disabled = false; btn.textContent = T('js.scan.error_connection'); }
             }
         }
     }
@@ -499,7 +503,7 @@
             resultsDiv.className = 'results';
             loadingDiv.style.display = 'flex';
             checkButton.disabled = true;
-            checkButton.textContent = 'Controllo...';
+            checkButton.textContent = T('js.breach.checking_email');
 
             try {
                 const ts = document.querySelector('[name="cf-turnstile-response"]');
@@ -508,7 +512,7 @@
                     'proxy/proxy-data-breach-checker.php?email=' + encodeURIComponent(email) +
                     '&cf-turnstile-response=' + encodeURIComponent(turnstileToken)
                 );
-                if (!response.ok) throw new Error('Errore HTTP: ' + response.status);
+                if (!response.ok) throw new Error(T('js.breach.http_error').replace('{0}', String(response.status)));
 
                 const data = await response.json();
                 loadingDiv.style.display = 'none';
@@ -517,58 +521,62 @@
                 if (data.success === false && data.error === 'Not found') {
                     resultsDiv.className = 'results safe';
                     resultsDiv.innerHTML =
-                        '<div class="breach-count">✅ Email Sicura</div>' +
-                        '<p>La tua email non è stata trovata in nessuna violazione di dati conosciuta. ' +
-                        'Continua a mantenere buone pratiche di sicurezza!</p>';
+                        '<div class="breach-count">' + escHtml(T('js.breach.safe_title')) + '</div>' +
+                        '<p>' + escHtml(T('js.breach.safe_body')) + '</p>';
                 } else if (data.success === true && data.found > 0) {
                     resultsDiv.className = 'results danger';
 
-                    let html = '<div class="breach-count"><span>⚠️</span> ' + data.found +
-                               ' Violazioni Trovate</div><p>La tua email è stata trovata nelle seguenti violazioni di dati:</p>';
+                    // T() returns escaped HTML by default for server-side use, but here we built
+                    // the strings carefully — the breach.found_count value contains <span>⚠️</span>
+                    // and is from our hard-coded translations.php, never from user input.
+                    let html = '<div class="breach-count">' +
+                               T('js.breach.found_count').replace('{0}', String(data.found)) +
+                               '</div><p>' + escHtml(T('js.breach.found_intro')) + '</p>';
 
                     (data.sources || []).forEach(source => {
                         html += '<div class="breach-item">' +
                                 '<div class="breach-name">' + escHtml(source.name) + '</div>' +
-                                '<div class="breach-date">Data: ' + escHtml(source.date) + '</div>' +
+                                '<div class="breach-date">' + escHtml(T('js.breach.date_label')) + ' ' + escHtml(source.date) + '</div>' +
                                 '</div>';
                     });
 
                     if (data.fields && data.fields.length > 0) {
-                        html += '<div class="fields-section"><div class="fields-title">Dati potenzialmente compromessi:</div><div class="fields-list">';
-                        const fieldTranslations = {
-                            'username': 'Nome utente', 'password': 'Password', 'email': 'Email',
-                            'phone': 'Telefono', 'address': 'Indirizzo', 'first_name': 'Nome',
-                            'last_name': 'Cognome', 'city': 'Città', 'country': 'Paese',
-                            'zip': 'CAP', 'location': 'Posizione', 'province': 'Provincia', 'name': 'Nome completo'
-                        };
+                        html += '<div class="fields-section"><div class="fields-title">' +
+                                escHtml(T('js.breach.fields_title')) + '</div><div class="fields-list">';
+                        // Map API field name → translation key.
+                        const knownFields = ['username','password','email','phone','address',
+                                             'first_name','last_name','city','country','zip',
+                                             'location','province','name'];
                         data.fields.forEach(field => {
-                            const translated = fieldTranslations[field] || field;
+                            const translated = knownFields.includes(field)
+                                ? T('js.breach.field.' + field)
+                                : field;
                             html += '<span class="field-tag">' + escHtml(translated) + '</span>';
                         });
                         html += '</div></div>';
                     }
 
-                    html += '<div class="recommendations"><strong>Raccomandazioni:</strong>' +
-                            ' • Cambia immediatamente le password degli account compromessi<br>' +
-                            ' • Attiva l\'autenticazione a due fattori dove possibile<br>' +
-                            ' • Monitora i tuoi account per attività sospette</div>';
+                    html += '<div class="recommendations"><strong>' + escHtml(T('js.breach.reco_label')) + '</strong>' +
+                            escHtml(T('js.breach.reco_pwd')) + '<br>' +
+                            escHtml(T('js.breach.reco_2fa')) + '<br>' +
+                            escHtml(T('js.breach.reco_monitor')) + '</div>';
 
                     resultsDiv.innerHTML = html;
                 } else {
-                    throw new Error('Risposta API non valida');
+                    throw new Error(T('js.breach.invalid_api'));
                 }
             } catch (error) {
-                console.error('Errore:', error);
+                console.error('Error:', error);
                 loadingDiv.style.display = 'none';
                 resultsDiv.style.display = 'block';
                 resultsDiv.className = 'results error';
                 resultsDiv.innerHTML =
-                    '<div class="breach-count">❌ Errore</div>' +
-                    '<p>Si è verificato un errore durante il controllo. Riprova più tardi.</p>' +
-                    '<small>Errore: ' + escHtml(error.message) + '</small>';
+                    '<div class="breach-count">' + escHtml(T('js.breach.error_title')) + '</div>' +
+                    '<p>' + escHtml(T('js.breach.error_body')) + '</p>' +
+                    '<small>' + escHtml(T('js.breach.error_label')) + ' ' + escHtml(error.message) + '</small>';
             } finally {
                 checkButton.disabled = false;
-                checkButton.textContent = 'Controlla Email';
+                checkButton.textContent = T('js.breach.check_email');
                 if (typeof turnstile !== 'undefined') turnstile.reset();
             }
         });
@@ -588,20 +596,20 @@
             if (!resultsDiv) return;
 
             testBtn.disabled = true;
-            testBtn.textContent = '⏳ Test in corso...';
-            resultsDiv.innerHTML = '<div class="loading">Analisi della connessione in corso</div>';
+            testBtn.textContent = T('js.vpn.testing');
+            resultsDiv.innerHTML = '<div class="loading">' + escHtml(T('js.vpn.loading')) + '</div>';
 
             let ipData = {}, rtcLeakIPs = [];
 
             try {
                 const res = await fetch('./API/vpncheck.php');
-                if (!res.ok) throw new Error('Errore nella chiamata API VPN');
+                if (!res.ok) throw new Error(T('js.vpn.api_error'));
 
                 ipData = await res.json();
                 if (ipData.error) throw new Error(ipData.error);
 
                 ipData = {
-                    ip: (ipData && ipData.ip) || 'Non disponibile',
+                    ip: (ipData && ipData.ip) || T('js.vpn.unavailable'),
                     location: (ipData && ipData.location) || {},
                     network:  (ipData && ipData.network)  || {},
                     security: (ipData && ipData.security) || {}
@@ -610,10 +618,10 @@
                 rtcLeakIPs = await getWebRTCIPs();
             } catch (e) {
                 resultsDiv.innerHTML =
-                    '<div class="result"><p class="danger">❌ Errore durante il test: ' + escHtml(e.message) + '</p>' +
-                    '<p style="margin-top: 1rem; color: #888; font-size: 0.9rem;">Verifica la tua connessione internet e riprova</p></div>';
+                    '<div class="result"><p class="danger">' + escHtml(T('js.vpn.error_during')) + escHtml(e.message) + '</p>' +
+                    '<p style="margin-top: 1rem; color: #888; font-size: 0.9rem;">' + escHtml(T('js.vpn.check_connection')) + '</p></div>';
                 testBtn.disabled = false;
-                testBtn.textContent = '🔍 Riprova Test';
+                testBtn.textContent = T('js.vpn.retry_test');
                 return;
             }
 
@@ -621,66 +629,69 @@
             const network  = ipData.network  || {};
             const security = ipData.security || {};
 
-            const cityText    = (location.city    && location.city.trim()    !== '') ? location.city    : 'Non disponibile';
-            const countryText = (location.country && location.country.trim() !== '') ? location.country : 'Non disponibile';
+            const unavailableT = T('js.vpn.unavailable');
+            const cityText    = (location.city    && location.city.trim()    !== '') ? location.city    : unavailableT;
+            const countryText = (location.country && location.country.trim() !== '') ? location.country : unavailableT;
             const asnText = (network.autonomous_system_number != null && String(network.autonomous_system_number).trim() !== '')
                 ? network.autonomous_system_number : 'N/A';
             const ispText = (network.autonomous_system_organization && network.autonomous_system_organization.trim() !== '')
-                ? network.autonomous_system_organization : 'Non disponibile';
+                ? network.autonomous_system_organization : unavailableT;
 
-            let html = '<h2 style="color:#00ff88;margin-bottom:2rem;text-align:center;">📊 Risultati Analisi</h2>';
+            let html = '<h2 style="color:#00ff88;margin-bottom:2rem;text-align:center;">' + escHtml(T('js.vpn.results_title')) + '</h2>';
 
             html += '<div class="result">' +
-                '<strong>🌍 Informazioni IP Pubblico</strong><br><br>' +
-                '<strong>IP Pubblico:</strong> <code>' + escHtml(ipData.ip) + '</code><br>' +
-                '<strong>Posizione:</strong> ' + escHtml(cityText) + ', ' + escHtml(countryText) + '<br>' +
-                '<strong>ISP / ASN:</strong> ' + escHtml(asnText) + ' - ' + escHtml(ispText) +
+                '<strong>' + escHtml(T('js.vpn.section_ip')) + '</strong><br><br>' +
+                '<strong>' + escHtml(T('js.vpn.label_ip')) + '</strong> <code>' + escHtml(ipData.ip) + '</code><br>' +
+                '<strong>' + escHtml(T('js.vpn.label_location')) + '</strong> ' + escHtml(cityText) + ', ' + escHtml(countryText) + '<br>' +
+                '<strong>' + escHtml(T('js.vpn.label_isp')) + '</strong> ' + escHtml(asnText) + ' - ' + escHtml(ispText) +
                 '</div>';
 
             const vpnStatus = getVPNStatus(security);
             html += '<div class="result">' +
-                '<strong>🔐 Controllo VPN / Proxy / Tor</strong><br><br>' +
-                (security.vpn   ? '✅ <span class="secure">Connessione VPN rilevata</span><br>' : '❌ <span class="warning">Nessuna VPN rilevata</span><br>') +
-                (security.proxy ? '✅ <span class="secure">Proxy rilevato</span><br>'        : '❌ <span class="warning">Nessun proxy rilevato</span><br>') +
-                (security.tor   ? '✅ <span class="secure">Rete Tor rilevata</span><br>'      : '❌ <span class="warning">Nessuna rete Tor rilevata</span><br>') +
-                (security.relay ? '✅ <span class="secure">Relay attivo</span><br>' : '') +
+                '<strong>' + escHtml(T('js.vpn.section_vpn')) + '</strong><br><br>' +
+                (security.vpn   ? '✅ <span class="secure">' + escHtml(T('js.vpn.vpn_detected')) + '</span><br>'   : '❌ <span class="warning">' + escHtml(T('js.vpn.vpn_none'))   + '</span><br>') +
+                (security.proxy ? '✅ <span class="secure">' + escHtml(T('js.vpn.proxy_detected')) + '</span><br>' : '❌ <span class="warning">' + escHtml(T('js.vpn.proxy_none')) + '</span><br>') +
+                (security.tor   ? '✅ <span class="secure">' + escHtml(T('js.vpn.tor_detected')) + '</span><br>'   : '❌ <span class="warning">' + escHtml(T('js.vpn.tor_none'))   + '</span><br>') +
+                (security.relay ? '✅ <span class="secure">' + escHtml(T('js.vpn.relay_active')) + '</span><br>' : '') +
                 '<br><div style="padding:1rem;background:rgba(0,0,0,0.3);border-radius:10px;margin-top:1rem;">' +
-                '<strong>Stato Generale:</strong> <span class="' + vpnStatus.class + '">' + vpnStatus.message + '</span></div>' +
+                '<strong>' + escHtml(T('js.vpn.overall_label')) + '</strong> <span class="' + vpnStatus.class + '">' + escHtml(vpnStatus.message) + '</span></div>' +
                 '</div>';
 
             const webRTCStatus  = analyzeWebRTCLeak(rtcLeakIPs, ipData.ip);
             const webRTCMessage = getWebRTCMessage(rtcLeakIPs, ipData.ip);
 
             html += '<div class="result">' +
-                '<strong>🌐 Test WebRTC Leak</strong><br><br>' +
+                '<strong>' + escHtml(T('js.vpn.section_webrtc')) + '</strong><br><br>' +
                 (rtcLeakIPs.length > 0
-                    ? '<strong>Indirizzi IP rilevati:</strong> ' + rtcLeakIPs.map(ip => '<code>' + escHtml(ip) + '</code>').join(', ') + '<br><br>'
-                    : '<strong>Indirizzi IP rilevati:</strong> Nessuno<br><br>') +
+                    ? '<strong>' + escHtml(T('js.vpn.label_ips_detected')) + '</strong> ' + rtcLeakIPs.map(ip => '<code>' + escHtml(ip) + '</code>').join(', ') + '<br><br>'
+                    : '<strong>' + escHtml(T('js.vpn.label_ips_detected')) + '</strong> ' + escHtml(T('js.vpn.none')) + '<br><br>') +
                 '<div style="padding:1rem;background:rgba(0,0,0,0.3);border-radius:10px;">' +
-                '<span class="' + webRTCStatus + '">' + webRTCMessage + '</span></div>' +
+                '<span class="' + webRTCStatus + '">' + escHtml(webRTCMessage) + '</span></div>' +
                 '</div>';
 
             const overall = getOverallSecurityStatus(security, webRTCStatus);
             html += '<div class="result" style="border:2px solid ' + overall.color + ';background:' + overall.bg + ';">' +
-                '<strong>🛡️ Valutazione Complessiva della Sicurezza</strong><br><br>' +
-                '<div style="font-size:1.2rem;"><span class="' + overall.class + '">' + overall.icon + ' ' + overall.title + '</span></div>' +
-                '<p style="margin-top:1rem;color:#ccc;">' + overall.description + '</p>' +
+                '<strong>' + escHtml(T('js.vpn.section_overall')) + '</strong><br><br>' +
+                '<div style="font-size:1.2rem;"><span class="' + overall.class + '">' + overall.icon + ' ' + escHtml(overall.title) + '</span></div>' +
+                '<p style="margin-top:1rem;color:#ccc;">' + escHtml(overall.description) + '</p>' +
                 (overall.recommendations
-                    ? '<div style="margin-top:1rem;padding:1rem;background:rgba(0,0,0,0.2);border-radius:8px;"><strong>Raccomandazioni:</strong><br>' + overall.recommendations + '</div>'
+                    // overall.recommendations contains <br> tags from translations.php — these
+                    // are hard-coded and safe. We don't escape, intentionally.
+                    ? '<div style="margin-top:1rem;padding:1rem;background:rgba(0,0,0,0.2);border-radius:8px;"><strong>' + escHtml(T('js.vpn.label_recommendations')) + '</strong><br>' + overall.recommendations + '</div>'
                     : '') +
                 '</div>';
 
             resultsDiv.innerHTML = html;
 
             testBtn.disabled = false;
-            testBtn.textContent = '🔄 Ripeti Test';
+            testBtn.textContent = T('js.vpn.repeat_test');
         }
 
         function getVPNStatus(security) {
             if (security.vpn || security.proxy || security.tor) {
-                return { class: 'secure',  message: '🛡️ Connessione protetta rilevata' };
+                return { class: 'secure',  message: T('js.vpn.status_protected') };
             }
-            return { class: 'warning', message: '⚠️ Nessuna protezione rilevata - IP esposto' };
+            return { class: 'warning', message: T('js.vpn.status_unprotected') };
         }
 
         function getOverallSecurityStatus(security, webRTCStatus) {
@@ -690,36 +701,36 @@
             if (hasVPN && webRTCSecure) {
                 return {
                     class: 'secure', color: '#00ff88', bg: 'rgba(0, 255, 136, 0.1)',
-                    icon: '✅', title: 'PROTEZIONE OTTIMALE',
-                    description: 'La tua connessione è ben protetta. VPN/Proxy attivo e nessun leak WebRTC rilevato.'
+                    icon: '✅', title: T('js.vpn.overall.optimal_title'),
+                    description: T('js.vpn.overall.optimal_desc')
                 };
             } else if (hasVPN && webRTCStatus === 'warning') {
                 return {
                     class: 'warning', color: '#ffaa00', bg: 'rgba(255, 170, 0, 0.1)',
-                    icon: '⚠️', title: 'PROTEZIONE BUONA',
-                    description: 'VPN/Proxy attivo ma WebRTC potrebbe essere bloccato o non funzionante.',
-                    recommendations: '• Verifica le impostazioni WebRTC nel browser<br>• Considera l\'uso di estensioni per bloccare WebRTC'
+                    icon: '⚠️', title: T('js.vpn.overall.good_title'),
+                    description: T('js.vpn.overall.good_desc'),
+                    recommendations: T('js.vpn.overall.good_recs')
                 };
             } else if (hasVPN && webRTCStatus === 'danger') {
                 return {
                     class: 'danger', color: '#ff4444', bg: 'rgba(255, 68, 68, 0.1)',
-                    icon: '❌', title: 'LEAK RILEVATO',
-                    description: 'VPN/Proxy attivo ma WebRTC sta esponendo il tuo IP reale!',
-                    recommendations: '• Disabilita WebRTC nel browser immediatamente<br>• Usa estensioni come "WebRTC Leak Prevent"<br>• Verifica le impostazioni della tua VPN'
+                    icon: '❌', title: T('js.vpn.overall.leak_title'),
+                    description: T('js.vpn.overall.leak_desc'),
+                    recommendations: T('js.vpn.overall.leak_recs')
                 };
             } else if (!hasVPN && webRTCSecure) {
                 return {
                     class: 'warning', color: '#ffaa00', bg: 'rgba(255, 170, 0, 0.1)',
-                    icon: '⚠️', title: 'PROTEZIONE PARZIALE',
-                    description: 'WebRTC sicuro ma non stai usando VPN/Proxy. Il tuo IP è comunque esposto.',
-                    recommendations: '• Attiva una VPN per protezione completa<br>• WebRTC è già sicuro, mantienilo così'
+                    icon: '⚠️', title: T('js.vpn.overall.partial_title'),
+                    description: T('js.vpn.overall.partial_desc'),
+                    recommendations: T('js.vpn.overall.partial_recs')
                 };
             } else {
                 return {
                     class: 'danger', color: '#ff4444', bg: 'rgba(255, 68, 68, 0.1)',
-                    icon: '🚨', title: 'NESSUNA PROTEZIONE',
-                    description: 'Non stai usando VPN/Proxy. Il tuo IP reale è completamente esposto.',
-                    recommendations: '• Attiva una VPN affidabile<br>• Considera l\'uso di Tor per maggiore anonimato<br>• Configura un proxy se necessario'
+                    icon: '🚨', title: T('js.vpn.overall.none_title'),
+                    description: T('js.vpn.overall.none_desc'),
+                    recommendations: T('js.vpn.overall.none_recs')
                 };
             }
         }
@@ -792,17 +803,17 @@
         }
 
         function getWebRTCMessage(rtcIPs, publicIP) {
-            if (rtcIPs.includes('BLOCKED')) return '✅ WebRTC bloccato dalle protezioni del browser - Ottimo per la privacy!';
-            if (rtcIPs.includes('ERROR'))   return '⚠️ Impossibile testare WebRTC - Potrebbe essere bloccato o limitato';
-            if (rtcIPs.length === 0)        return '✅ WebRTC bloccato - Nessun rischio di leak IP';
+            if (rtcIPs.includes('BLOCKED')) return T('js.vpn.webrtc.blocked');
+            if (rtcIPs.includes('ERROR'))   return T('js.vpn.webrtc.error');
+            if (rtcIPs.length === 0)        return T('js.vpn.webrtc.blocked_no_leak');
             const publicRTCIPs = rtcIPs.filter(ip =>
                 !ip.startsWith('192.168.') && !ip.startsWith('10.') &&
                 !ip.startsWith('172.')     && !ip.startsWith('127.')
             );
-            if (publicRTCIPs.length === 0) return '✅ Solo IP privati rilevati - WebRTC sicuro';
+            if (publicRTCIPs.length === 0) return T('js.vpn.webrtc.only_private');
             if (publicRTCIPs.includes(publicIP) && publicRTCIPs.length === 1)
-                return '✅ WebRTC mostra solo l\'IP della VPN - Sicuro';
-            return '❌ LEAK WebRTC rilevato! Il tuo IP reale potrebbe essere esposto';
+                return T('js.vpn.webrtc.only_vpn');
+            return T('js.vpn.webrtc.leak');
         }
     }
 
@@ -922,7 +933,7 @@
             if (!url) { showError('Inserisci un URL HTTPS valido (es. https://example.com)'); return; }
 
             this.disabled = true;
-            this.textContent = 'Verifica in corso...';
+            this.textContent = T('js.vs.verify_running');
 
             fetch('generate_verification.php', {
                 method: 'POST',
@@ -936,7 +947,7 @@
             .then(r => r.json())
             .then(resp => {
                 this.disabled = false;
-                this.textContent = 'Verifica Dominio';
+                this.textContent = T('js.vs.verify_btn');
 
                 if (resp.error) { showError(resp.error); return; }
 
@@ -955,8 +966,8 @@
             })
             .catch(() => {
                 this.disabled = false;
-                this.textContent = 'Verifica Dominio';
-                showError('Errore di connessione. Riprova.');
+                this.textContent = T('js.vs.verify_btn');
+                showError(T('js.vs.connection_error'));
             });
         });
 
@@ -970,11 +981,11 @@
                 const statusEl = document.getElementById('verifyStatus');
 
                 this.disabled = true;
-                this.textContent = 'Controllo DNS...';
+                this.textContent = T('js.vs.dns_checking');
                 if (statusEl) {
                     statusEl.style.display = 'block';
                     statusEl.className = 'verify-status info';
-                    statusEl.textContent = 'Interrogazione DNS in corso...';
+                    statusEl.textContent = T('js.vs.dns_querying');
                 }
 
                 fetch('verify_domain.php', {
@@ -989,7 +1000,7 @@
                 .then(r => r.json())
                 .then(resp => {
                     this.disabled = false;
-                    this.textContent = 'Verifica DNS';
+                    this.textContent = T('js.vs.dns_verify_btn');
 
                     if (resp.error) {
                         if (statusEl) {
@@ -1001,7 +1012,7 @@
                     if (resp.status === 'verified') {
                         if (statusEl) {
                             statusEl.className = 'verify-status success';
-                            statusEl.textContent = 'Dominio verificato con successo!';
+                            statusEl.textContent = T('js.vs.dns_verified');
                         }
                         const input = document.getElementById('scanInput');
                         if (input) verifiedUrl = validateUrl(input.value);
@@ -1010,15 +1021,16 @@
                         setTimeout(() => showStep('scan'), 1200);
                     } else if (statusEl) {
                         statusEl.className = 'verify-status error';
-                        statusEl.textContent = resp.message || 'Record TXT non trovato. Attendi qualche minuto e riprova.';
+                        // resp.message is server-localized via verify_domain.php
+                        statusEl.textContent = resp.message || T('js.vs.connection_error');
                     }
                 })
                 .catch(() => {
                     this.disabled = false;
-                    this.textContent = 'Verifica DNS';
+                    this.textContent = T('js.vs.dns_verify_btn');
                     if (statusEl) {
                         statusEl.className = 'verify-status error';
-                        statusEl.textContent = 'Errore di connessione. Riprova.';
+                        statusEl.textContent = T('js.vs.connection_error');
                     }
                 });
             });
@@ -1070,7 +1082,7 @@
                     setStatus(s, 'pending', 'IN ATTESA');
                     const bd = document.getElementById('body-' + s);
                     if (bd) {
-                        bd.innerHTML = '<span class="waiting">In attesa di avvio...</span>';
+                        bd.innerHTML = '<span class="waiting">' + escHtml(T('js.vs.waiting')) + '</span>';
                         bd.classList.remove('open');
                     }
                 });
@@ -1079,7 +1091,7 @@
                 if (pw) pw.style.display = 'none';
 
                 this.disabled = true;
-                this.textContent = 'Scansione in corso...';
+                this.textContent = T('js.vs.scanning');
 
                 fetch('start_scan.php', {
                     method: 'POST',
@@ -1095,7 +1107,7 @@
                     if (resp.error) { showScanError(resp.error); resetBtn(); return; }
                     startStreaming(resp.scanId);
                 })
-                .catch(() => { showScanError('Errore di connessione. Riprova.'); resetBtn(); });
+                .catch(() => { showScanError(T('js.vs.connection_error')); resetBtn(); });
             });
         }
 
@@ -1104,7 +1116,7 @@
             const cs  = document.getElementById('legalConsent');
             if (!btn) return;
             btn.disabled = !(cs && cs.checked);
-            btn.textContent = 'Avvia Scansione';
+            btn.textContent = T('js.vs.start_scan');
         }
 
         function startStreaming(scanId) {
@@ -1151,9 +1163,9 @@
             busyEl.style.display = 'block';
             busyEl.innerHTML =
                 '<div class="busy-icon">⏳</div>' +
-                '<h3>Scanner al completo</h3>' +
-                '<p>In questo momento tutte le scansioni sono occupate da altri utenti. Riprova tra qualche minuto.</p>' +
-                '<button class="scan-submit" data-scan-close="busy" style="max-width:220px;margin-top:1rem">Chiudi</button>';
+                '<h3>' + escHtml(T('js.vs.busy_title')) + '</h3>' +
+                '<p>' + escHtml(T('js.vs.busy_body')) + '</p>' +
+                '<button class="scan-submit" data-scan-close="busy" style="max-width:220px;margin-top:1rem">' + escHtml(T('js.vs.close')) + '</button>';
         }
 
         function showScanError(msg) {
@@ -1174,9 +1186,9 @@
             errEl.style.display = 'block';
             errEl.innerHTML =
                 '<div class="busy-icon">❌</div>' +
-                '<h3>Errore</h3>' +
+                '<h3>' + escHtml(T('js.vs.error_title')) + '</h3>' +
                 '<p>' + escHtml(msg) + '</p>' +
-                '<button class="scan-submit" data-scan-close="error" style="max-width:220px;margin-top:1rem">Chiudi</button>';
+                '<button class="scan-submit" data-scan-close="error" style="max-width:220px;margin-top:1rem">' + escHtml(T('js.vs.close')) + '</button>';
         }
 
         // Event delegation per i bottoni "Chiudi" generati dinamicamente
@@ -1227,7 +1239,7 @@
             setStatus(name, 'running', 'IN CORSO');
             const bd = document.getElementById('body-' + name);
             if (bd) {
-                bd.innerHTML = '<span class="waiting">Analisi in corso...</span>';
+                bd.innerHTML = '<span class="waiting">' + escHtml(T('js.vs.analysis_running')) + '</span>';
                 bd.classList.add('open');
             }
         }
@@ -1332,7 +1344,7 @@
             let html = '';
 
             if (name === 'nmap') {
-                if (d.ports.length === 0 && !d.done) { body.innerHTML = '<span class="waiting">Scansione porte in corso...</span>'; return; }
+                if (d.ports.length === 0 && !d.done) { body.innerHTML = '<span class="waiting">' + escHtml(T('js.vs.ports_running')) + '</span>'; return; }
                 if (d.ports.length === 0 && d.done) { html = '<div class="hdr-item"><span class="hdr-icon">✅</span><span class="hdr-val hdr-ok">Nessuna porta aperta trovata</span></div>'; }
                 else {
                     html = '<div style="margin-bottom:0.5rem;font-size:0.82rem;color:#999">' + d.ports.length + ' port' + (d.ports.length > 1 ? 'e' : 'a') + ' apert' + (d.ports.length > 1 ? 'e' : 'a') + '</div><div class="port-tags">';
@@ -1351,7 +1363,7 @@
 
             if (name === 'testssl') {
                 const dt = data.testssl;
-                if (dt.lines.length === 0 && !d.done) { body.innerHTML = '<span class="waiting">Analisi TLS in corso...</span>'; return; }
+                if (dt.lines.length === 0 && !d.done) { body.innerHTML = '<span class="waiting">' + escHtml(T('js.vs.tls_running')) + '</span>'; return; }
                 if (dt.lines.length === 0 && d.done) { html = '<span class="waiting">Nessun dato TLS ottenuto.</span>'; }
                 else {
                     let currentGroup = '';
@@ -1409,7 +1421,7 @@
 
             if (name === 'headers') {
                 const d2 = data.headers;
-                if (d2.items.length === 0 && !d.done) { body.innerHTML = '<span class="waiting">Analisi header in corso...</span>'; return; }
+                if (d2.items.length === 0 && !d.done) { body.innerHTML = '<span class="waiting">' + escHtml(T('js.vs.headers_running')) + '</span>'; return; }
                 if (d2.items.length === 0 && d.done) { html = '<span class="waiting">Nessun dato ottenuto.</span>'; }
                 else {
                     if (d2.server) html += '<div class="hdr-item"><span class="hdr-icon">🖥</span><span class="hdr-name">Server</span><span class="hdr-val">' + escHtml(d2.server) + '</span></div>';
@@ -1453,13 +1465,13 @@
                     html += '<div class="dns-group"><div class="dns-type">SUBDOMAINS (' + d.subdomains.length + ')</div>';
                     html += '<div class="dns-values">' + d.subdomains.map(v => '<span class="port-tag">' + escHtml(v) + '</span> ').join('') + '</div></div>';
                 }
-                if (!hasRecords && !d.done) { body.innerHTML = '<span class="waiting">Enumerazione DNS in corso...</span>'; return; }
+                if (!hasRecords && !d.done) { body.innerHTML = '<span class="waiting">' + escHtml(T('js.vs.dns_enum_running')) + '</span>'; return; }
                 if (!hasRecords && d.done) html = '<span class="waiting">Nessun record trovato.</span>';
             }
 
             if (name === 'extra') {
                 const dx = data.extra;
-                if (dx.sections.length === 0 && !d.done) { body.innerHTML = '<span class="waiting">Analisi in corso...</span>'; return; }
+                if (dx.sections.length === 0 && !d.done) { body.innerHTML = '<span class="waiting">' + escHtml(T('js.vs.analysis_running')) + '</span>'; return; }
 
                 const cats = { whois: [], email: [], files: [], robots: [], redir: [], tip: [] };
                 dx.sections.forEach(s => { if (cats[s.cat]) cats[s.cat].push(s); });

@@ -1,10 +1,14 @@
-<?php include("config.php"); ?>
+<?php
+include("config.php");
+require_once __DIR__ . "/lang/lang.php";
+$currentLang = pp_lang_current();
+?>
 <!DOCTYPE html>
-<html lang="it">
+<html lang="<?= htmlspecialchars($currentLang, ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatchPulse - Hall of Fame</title>
+    <title><?= t('hof.title_tag') ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
@@ -55,23 +59,24 @@
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
         <a href="home.php" class="logo"><img src="images/PatchPulseLogo.svg" alt="PatchPulse" style="width:50px;height:50px;object-fit:contain;">PatchPulse</a>
-        <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+        <button class="hamburger" id="hamburger" aria-label="<?= t('nav.menu') ?>"><span></span><span></span><span></span></button>
     </div>
     <div class="nav-section">
-        <a href="home.php" class="nav-item"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>Homepage</a>
+        <a href="home.php" class="nav-item"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span><?= t('nav.homepage') ?></a>
     </div>
     <div class="sidebar-bottom">
-        <?php if (isset($_SESSION['user_id'])): ?><a href="account.php" class="nav-item"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>Area Personale</a><?php else: ?><a href="log-reg.php#login" class="nav-item"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></span>Login</a><?php endif; ?>
+        <?php if (isset($_SESSION['user_id'])): ?><a href="account.php" class="nav-item"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><?= t('nav.account') ?></a><?php else: ?><a href="log-reg.php#login" class="nav-item"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></span><?= t('nav.login') ?></a><?php endif; ?>
+        <a href="settings.php" class="nav-item"><span class="nav-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></span><?= t('nav.settings') ?></a>
     </div>
 </aside>
 <main class="main-wrapper" id="main">
     <div class="page-header">
-        <a href="home.php" class="page-header-back"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Torna alla Home</a>
-        <p class="page-header-eyebrow">Sicurezza</p>
-        <h1 class="page-header-title">Hall of Fame</h1>
+        <a href="home.php" class="page-header-back"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> <?= t('nav.back_home') ?></a>
+        <p class="page-header-eyebrow"><?= t('hof.eyebrow') ?></p>
+        <h1 class="page-header-title"><?= t('hof.title') ?></h1>
     </div>
     <div class="hof-content">
-        <p class="hof-intro">Ringraziamo i ricercatori di sicurezza che ci aiutano a proteggere PatchPulse e i nostri utenti. Se trovi una vulnerabilità, segnalala secondo la nostra <a href="policy/security-policy.php">Vulnerability Disclosure Policy</a>.</p>
+        <p class="hof-intro"><?= t('hof.intro_pre') ?> <a href="policy/security-policy.php"><?= t('hof.intro_link') ?></a>.</p>
 
         <!-- Quando qualcuno segnala una vulnerabilità, aggiungi un blocco così:
         <div class="hof-entry">
@@ -86,10 +91,11 @@
 
         <div class="hof-empty">
             <div class="hof-empty-icon">🛡️</div>
-            <p>Nessuna segnalazione ancora.<br>Vuoi essere il primo? <a href="policy/security-policy.php">Leggi la nostra policy</a>.</p>
+            <p><?= t('hof.empty') ?><br><?= t('hof.empty_cta_pre') ?> <a href="policy/security-policy.php"><?= t('hof.empty_cta_link') ?></a>.</p>
         </div>
     </div>
 </main>
+<?php pp_lang_emit_js(); ?>
 <script src="script.js"></script>
 </body>
 </html>

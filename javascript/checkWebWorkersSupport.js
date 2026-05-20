@@ -7,6 +7,8 @@
  *  - Note: alcune Content-Security-Policy possono impedire la creazione
  *    di Worker da blob: → indichiamo solo "API disponibile", non "tutto funzionante".
  */
+import { T } from '../lang/t.js';
+
 export function checkWebWorkersSupport() {
     const el = document.getElementById('webWorkersSupported');
     if (!el) {
@@ -19,7 +21,7 @@ export function checkWebWorkersSupport() {
     const svw = typeof navigator !== 'undefined' && 'serviceWorker' in navigator;
 
     if (!w) {
-        el.innerText = 'No';
+        el.innerText = T('js.bs.no');
         return;
     }
 
@@ -28,6 +30,6 @@ export function checkWebWorkersSupport() {
     if (svw) extras.push('ServiceWorker');
 
     el.innerText = extras.length
-        ? `Sì (anche ${extras.join(' + ')})`
-        : 'Sì';
+        ? `${T('js.bs.yes')} (${extras.join(' + ')})`
+        : T('js.bs.yes');
 }

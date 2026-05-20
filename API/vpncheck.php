@@ -6,12 +6,14 @@ header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
 
 session_start();
+require_once __DIR__ . "/../lang/lang.php";
+
 $rateKey = 'vpn_requests';
 $now = time();
 $_SESSION[$rateKey] = array_filter($_SESSION[$rateKey] ?? [], fn($t) => ($now - $t) < 60);
 if (count($_SESSION[$rateKey]) >= 5) {
     http_response_code(429);
-    echo json_encode(['error' => 'Troppe richieste. Riprova tra un minuto.']);
+    echo json_encode(['error' => t('api.rate_limit', false)]);
     exit();
 }
 $_SESSION[$rateKey][] = $now;
@@ -39,6 +41,7 @@ function getRealIP() {
 
 $client_ip = getRealIP();
 
+// Validazione aggiuntiva dell'IP
 if (!filter_var($client_ip, FILTER_VALIDATE_IP)) {
     http_response_code(400);
     echo json_encode(['error' => 'IP non valido']);
@@ -57,5 +60,5 @@ if ($httpCode === 200 && $response) {
     echo $response;
 } else {
     http_response_code(502);
-    echo json_encode(['error' => 'Errore nella chiamata VPN API']);
+    echo json_encode(['error' => t('api.vpn_error', false)]);
 }

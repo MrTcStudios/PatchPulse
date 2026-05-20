@@ -6,6 +6,8 @@
  *  - Gestione di tutti i valori validi del DNT ('1', 'yes', '0', 'unspecified').
  *  - GPC ha precedenza su DNT nel report perché DNT è deprecato.
  */
+import { T } from '../lang/t.js';
+
 export function checkDoNotTrack() {
     const el = document.getElementById('doNotTrack');
     if (!el) return;
@@ -20,12 +22,12 @@ export function checkDoNotTrack() {
     const gpcActive = navigator.globalPrivacyControl === true;
 
     if (gpcActive && dntActive) {
-        el.innerText = 'Attivato (DNT + Global Privacy Control)';
+        el.innerText = T('js.bs.dnt.both');
     } else if (gpcActive) {
-        el.innerText = 'Attivato (Global Privacy Control)';
+        el.innerText = T('js.bs.dnt.gpc');
     } else if (dntActive) {
-        el.innerText = 'Attivato (DNT — deprecato, molti siti lo ignorano)';
+        el.innerText = T('js.bs.dnt.only');
     } else {
-        el.innerText = 'Disattivato';
+        el.innerText = T('js.bs.dnt.off');
     }
 }

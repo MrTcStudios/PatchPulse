@@ -10,6 +10,8 @@ ini_set('session.use_only_cookies', 1);
 
 session_start();
 
+require_once __DIR__ . "/../lang/lang.php";
+
 $db_host = getenv('DB_HOST');
 $db_name = getenv('DB_NAME');
 $db_user = getenv('DB_USER');
@@ -17,24 +19,26 @@ $db_pass = getenv('DB_PASS');
 
 $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
 if ($conn->connect_error) {
-    die('Errore interno.');
+    die(t('flash.internal_error', false));
 }
 
 $error = '';
 $success = '';
 $showForm = false;
 
+// Validazione token (64 hex chars)
 $token = $_GET['token'] ?? $_POST['token'] ?? '';
 if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
-    $error = "Link non valido.";
+    $error = t('reset.link_invalid');
 } else {
+    // Verifica token nel DB
     $stmt = $conn->prepare("SELECT id FROM users WHERE reset_token = ? AND reset_token_expires > NOW()");
     $stmt->bind_param("s", $token);
     $stmt->execute();
     $stmt->store_result();
 
     if ($stmt->num_rows === 0) {
-        $error = "Link non valido o scaduto. Richiedi un nuovo reset.";
+        $error = t('reset.link_expired');
         $stmt->close();
     } else {
         $stmt->bind_result($userId);
@@ -44,25 +48,28 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
     }
 }
 
+// Gestione POST — nuovo password
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $showForm) {
+    // CSRF
     if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
-        $error = "Richiesta non valida.";
+        $error = t('flash.invalid_request');
         $showForm = false;
     } else {
         $newPassword = $_POST['new_password'] ?? '';
         $confirmPassword = $_POST['confirm_password'] ?? '';
 
         if (empty($newPassword) || empty($confirmPassword)) {
-            $error = "Compila tutti i campi.";
+            $error = t('flash.fill_all_fields');
         } elseif ($newPassword !== $confirmPassword) {
-            $error = "Le password non coincidono.";
+            $error = t('flash.register.pwd_mismatch');
         } elseif (mb_strlen($newPassword) < 8) {
-            $error = "La password deve avere almeno 8 caratteri.";
+            $error = t('flash.register.weak_pwd');
         } elseif (mb_strlen($newPassword) > 128) {
-            $error = "Password troppo lunga (max 128 caratteri).";
+            $error = t('flash.register.long_pwd');
         } elseif (!preg_match('/[A-Z]/', $newPassword) || !preg_match('/[a-z]/', $newPassword) || !preg_match('/[0-9]/', $newPassword)) {
-            $error = "La password deve contenere almeno una maiuscola, una minuscola e un numero.";
+            $error = t('flash.register.pwd_complexity');
         } else {
+            // Aggiorna password
             $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
 
             $update = $conn->prepare("UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ? AND reset_token = ?");
@@ -70,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $showForm) {
             $update->execute();
 
             if ($update->affected_rows > 0) {
+                // Log
                 $userIp = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'unknown';
                 if (!filter_var($userIp, FILTER_VALIDATE_IP)) $userIp = 'unknown';
                 $log = $conn->prepare("INSERT INTO activity_logs (user_id, action, ip_address) VALUES (?, 'password_reset_completed', ?)");
@@ -77,10 +85,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $showForm) {
                 $log->execute();
                 $log->close();
 
-                $success = "Password reimpostata con successo!";
+                $success = t('reset.success');
                 $showForm = false;
             } else {
-                $error = "Errore durante il reset. Il link potrebbe essere scaduto.";
+                $error = t('reset.failed');
                 $showForm = false;
             }
             $update->close();
@@ -88,6 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $showForm) {
     }
 }
 
+// CSRF token per il form
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -95,11 +104,11 @@ if (empty($_SESSION['csrf_token'])) {
 $conn->close();
 ?>
 <!DOCTYPE html>
-<html lang="it">
+<html lang="<?= htmlspecialchars(pp_lang_current(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatchPulse - Reimposta Password</title>
+    <title><?= t('reset.title_tag') ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
@@ -123,32 +132,32 @@ $conn->close();
 <body>
 <main class="main-wrapper reset-page" style="margin-left:0;border-radius:0;">
     <div class="reset-box">
-        <h1>Reimposta Password</h1>
+        <h1><?= t('reset.title') ?></h1>
 
         <?php if ($error): ?>
-            <div class="msg msg-err"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
+            <div class="msg msg-err"><?= $error /* already escaped by t() */ ?></div>
         <?php endif; ?>
 
         <?php if ($success): ?>
-            <div class="msg msg-ok"><?= htmlspecialchars($success, ENT_QUOTES, 'UTF-8') ?></div>
-            <div class="back-link"><a href="../log-reg.php#login">Vai al Login</a></div>
+            <div class="msg msg-ok"><?= $success /* already escaped by t() */ ?></div>
+            <div class="back-link"><a href="../log-reg.php#login"><?= t('reset.go_login') ?></a></div>
         <?php endif; ?>
 
         <?php if ($showForm): ?>
-            <p class="subtitle">Inserisci la tua nuova password</p>
+            <p class="subtitle"><?= t('reset.subtitle') ?></p>
             <form method="post">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                 <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
-                <label for="new_password">Nuova Password</label>
-                <input type="password" id="new_password" name="new_password" placeholder="Minimo 8 caratteri, maiuscola, minuscola, numero" required minlength="8">
-                <label for="confirm_password">Conferma Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" placeholder="Ripeti la password" required>
-                <button type="submit">Reimposta Password</button>
+                <label for="new_password"><?= t('reset.new_password') ?></label>
+                <input type="password" id="new_password" name="new_password" placeholder="<?= t('reset.new_password_ph') ?>" required minlength="8">
+                <label for="confirm_password"><?= t('reset.confirm_password') ?></label>
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="<?= t('reset.confirm_password_ph') ?>" required>
+                <button type="submit"><?= t('reset.submit') ?></button>
             </form>
         <?php endif; ?>
 
         <?php if (!$showForm && !$success): ?>
-            <div class="back-link"><a href="../log-reg.php">Torna al Login</a></div>
+            <div class="back-link"><a href="../log-reg.php"><?= t('reset.back_login') ?></a></div>
         <?php endif; ?>
     </div>
 </main>

@@ -13,36 +13,40 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+require_once __DIR__ . "/lang/lang.php";
+
 try {
     if (!isset($_SESSION['user_id'])) {
-        throw new Exception('Non autorizzato', 401);
+        throw new Exception(t('vd.unauthorized', false), 401);
     }
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        throw new Exception('Metodo non consentito', 405);
+        throw new Exception(t('vd.method_not_allowed', false), 405);
     }
 
+    // CSRF
     if (
         empty($_SERVER['HTTP_X_REQUESTED_WITH']) ||
         strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) !== 'xmlhttprequest'
     ) {
-        throw new Exception('Richiesta non valida', 403);
+        throw new Exception(t('vd.invalid_request', false), 403);
     }
 
     $csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     if (empty($csrfToken) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
-        throw new Exception('Token CSRF non valido', 403);
+        throw new Exception(t('vd.csrf_invalid', false), 403);
     }
 
+    // Input
     $rawInput = file_get_contents('php://input');
     $input = json_decode($rawInput, true);
     if (!is_array($input)) {
-        throw new Exception('JSON non valido', 400);
+        throw new Exception(t('vd.json_invalid', false), 400);
     }
 
     $domain = strtolower(trim($input['domain'] ?? ''));
     if (empty($domain) || !preg_match('/^(?!-)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,62}[a-zA-Z0-9])?(?:\.(?!-)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,62}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/', $domain)) {
-        throw new Exception('Dominio non valido', 400);
+        throw new Exception(t('vd.domain_invalid', false), 400);
     }
 
     $db_host = getenv('DB_HOST');
@@ -52,11 +56,12 @@ try {
 
     $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
     if ($conn->connect_error) {
-        throw new Exception('Errore interno', 500);
+        throw new Exception(t('vd.internal_error', false), 500);
     }
 
     $userId = (int)$_SESSION['user_id'];
 
+    // Recupera il token atteso dal DB
     $stmt = $conn->prepare("SELECT id, verification_token, verified_at FROM verified_domains WHERE user_id = ? AND domain = ?");
     $stmt->bind_param("is", $userId, $domain);
     $stmt->execute();
@@ -65,13 +70,14 @@ try {
     if ($stmt->num_rows === 0) {
         $stmt->close();
         $conn->close();
-        throw new Exception('Nessuna verifica in sospeso per questo dominio', 404);
+        throw new Exception(t('vd.no_pending', false), 404);
     }
 
     $stmt->bind_result($domainId, $expectedToken, $verifiedAt);
     $stmt->fetch();
     $stmt->close();
 
+    // Se già verificato, conferma
     if ($verifiedAt) {
         echo json_encode([
             'status' => 'verified',
@@ -81,6 +87,7 @@ try {
         exit();
     }
 
+    // Cerca il record TXT tramite Google DoH
     $txtName = "_patchpulse.{$domain}";
     $expectedValue = "patchpulse-verify={$expectedToken}";
 
@@ -99,6 +106,7 @@ try {
 
     $dohResponse = @file_get_contents($dohUrl, false, $context);
     if ($dohResponse === false) {
+        // Fallback: prova Cloudflare DoH
         $dohUrl = "https://cloudflare-dns.com/dns-query?" . http_build_query([
             'name' => $txtName,
             'type' => 'TXT',
@@ -115,15 +123,17 @@ try {
 
     if ($dohResponse === false) {
         $conn->close();
-        throw new Exception('Impossibile verificare il DNS. Riprova tra qualche minuto.', 503);
+        throw new Exception(t('vd.dns_failed', false), 503);
     }
 
     $dnsData = json_decode($dohResponse, true);
     $answers = $dnsData['Answer'] ?? [];
 
+    // Cerca il record TXT corrispondente
     $found = false;
     foreach ($answers as $answer) {
-        if (($answer['type'] ?? 0) === 16) {
+        if (($answer['type'] ?? 0) === 16) { // TXT record
+            // I record TXT da DoH possono avere apici, rimuovili
             $value = trim($answer['data'] ?? '', '"\'');
             if ($value === $expectedValue) {
                 $found = true;
@@ -138,17 +148,19 @@ try {
             'domain' => $domain,
             'expected_name' => $txtName,
             'expected_value' => $expectedValue,
-            'message' => 'Record TXT non trovato. Assicurati di averlo aggiunto e attendi qualche minuto per la propagazione DNS.',
+            'message' => t('vd.txt_not_found', false),
         ]);
         $conn->close();
         exit();
     }
 
+    // Verificato! Aggiorna il DB (nessuna scadenza — ri-verifica live prima di ogni scan)
     $update = $conn->prepare("UPDATE verified_domains SET verified_at = NOW() WHERE id = ?");
     $update->bind_param("i", $domainId);
     $update->execute();
     $update->close();
 
+    // Log
     $userIp = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'unknown';
     if (!filter_var($userIp, FILTER_VALIDATE_IP)) $userIp = 'unknown';
 

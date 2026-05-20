@@ -4,6 +4,8 @@
  * sistema operativo e architettura, ed è uno dei segnali più importanti usati
  * per il fingerprinting passivo.
  */
+import { T } from '../lang/t.js';
+
 export function checkBrowserFingerprinting() {
     const ua = fingerprintUser();
     const el = document.getElementById('browserFingerprinting');
@@ -12,7 +14,7 @@ export function checkBrowserFingerprinting() {
         return;
     }
 
-    el.innerText = ua || 'Non disponibile';
+    el.innerText = ua || T('js.bs.unavailable');
     // Tooltip con la stringa completa, utile se viene troncata visivamente
     el.title = ua || '';
 }

@@ -8,6 +8,8 @@
  *  - Su iOS Safari l'oggetto non esiste mai (Apple non supporta la Generic Sensor API),
  *    quindi indichiamo "Non supportato" invece di lista "No, No, No".
  */
+import { T } from '../lang/t.js';
+
 export function checkSensorSupport() {
     const el = document.getElementById('sensorsSupported');
     if (!el) {
@@ -16,19 +18,21 @@ export function checkSensorSupport() {
     }
 
     const sensors = {
-        'Accelerometro': 'LinearAccelerationSensor' in window || 'Accelerometer' in window,
-        'Giroscopio':    'Gyroscope' in window,
-        'Magnetometro':  'Magnetometer' in window,
-        'Orientamento':  'AbsoluteOrientationSensor' in window || 'RelativeOrientationSensor' in window,
+        [T('js.bs.sensor.accelerometer')]: 'LinearAccelerationSensor' in window || 'Accelerometer' in window,
+        [T('js.bs.sensor.gyroscope')]:     'Gyroscope' in window,
+        [T('js.bs.sensor.magnetometer')]:  'Magnetometer' in window,
+        [T('js.bs.sensor.orientation')]:   'AbsoluteOrientationSensor' in window || 'RelativeOrientationSensor' in window,
     };
 
     const anySupported = Object.values(sensors).some(Boolean);
     if (!anySupported) {
-        el.innerText = 'Non supportata (Generic Sensor API non disponibile)';
+        el.innerText = T('js.bs.sensor.unsupported');
         return;
     }
 
+    const yesT = T('js.bs.yes');
+    const noT = T('js.bs.no');
     el.innerText = Object.entries(sensors)
-        .map(([name, ok]) => `${name}: ${ok ? 'Sì' : 'No'}`)
+        .map(([name, ok]) => `${name}: ${ok ? yesT : noT}`)
         .join(', ');
 }

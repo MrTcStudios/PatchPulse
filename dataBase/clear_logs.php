@@ -15,14 +15,16 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Deve essere POST (no GET per azioni distruttive)
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     header("Location: ../account.php");
     exit();
 }
 
+// CSRF
 $csrfToken = $_POST['csrf_token'] ?? '';
 if (empty($csrfToken) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
-    $_SESSION['account_message'] = "Richiesta non valida.";
+    $_SESSION['account_message'] = "flash.invalid_request";
     header("Location: ../account.php");
     exit();
 }
@@ -34,7 +36,7 @@ $db_pass = getenv('DB_PASS');
 
 $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
 if ($conn->connect_error) {
-    $_SESSION['account_message'] = "Errore interno. Riprova.";
+    $_SESSION['account_message'] = "flash.internal_error_retry";
     header("Location: ../account.php");
     exit();
 }

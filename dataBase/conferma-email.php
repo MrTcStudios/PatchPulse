@@ -17,27 +17,29 @@ $db_pass = getenv('DB_PASS');
 
 $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
 if ($conn->connect_error) {
-    $_SESSION['registration_message'] = "Errore interno. Riprova più tardi.";
+    $_SESSION['registration_message'] = "flash.internal_error";
     header("Location: ../log-reg.php");
     exit();
 }
 
+// Validazione rigorosa del token (64 caratteri hex)
 $token = $_GET['token'] ?? '';
 if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
-    $_SESSION['registration_message'] = "Link di conferma non valido.";
+    $_SESSION['registration_message'] = "flash.register.link_invalid";
     $conn->close();
     header("Location: ../log-reg.php");
     exit();
 }
 
+// Conferma l'account
 $stmt = $conn->prepare("UPDATE users SET is_confirmed = TRUE, confirmation_token = NULL WHERE confirmation_token = ? AND is_confirmed = FALSE");
 $stmt->bind_param("s", $token);
 $stmt->execute();
 
 if ($stmt->affected_rows > 0) {
-    $_SESSION['registration_message'] = "Account confermato con successo! Ora puoi accedere.";
+    $_SESSION['registration_message'] = "flash.register.confirmed";
 } else {
-    $_SESSION['registration_message'] = "Link non valido o già utilizzato.";
+    $_SESSION['registration_message'] = "flash.register.link_used";
 }
 
 $stmt->close();

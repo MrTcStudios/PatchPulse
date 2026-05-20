@@ -7,12 +7,14 @@
  *  - Aggiunto null check sull'elemento UI.
  *  - I listener vengono registrati una sola volta (no leak).
  */
+import { T } from '../lang/t.js';
+
 export async function getBatteryStatus() {
     const el = document.getElementById('batteryStatus');
     if (!el) return;
 
     if (typeof navigator === 'undefined' || typeof navigator.getBattery !== 'function') {
-        el.textContent = 'Non supportata dal browser';
+        el.textContent = T('js.bs.bat.unsupported_browser');
         el.classList.remove('loading');
         return;
     }
@@ -21,7 +23,7 @@ export async function getBatteryStatus() {
     try {
         battery = await navigator.getBattery();
     } catch (_) {
-        el.textContent = 'Non disponibile';
+        el.textContent = T('js.bs.unavailable');
         el.classList.remove('loading');
         return;
     }
@@ -30,16 +32,16 @@ export async function getBatteryStatus() {
         const level = Math.round((battery.level || 0) * 100);
         const charging = !!battery.charging;
 
-        let text = `${level}% ${charging ? '(In carica)' : '(Non in carica)'}`;
+        let text = `${level}% ${charging ? T('js.bs.bat.charging') : T('js.bs.bat.not_charging')}`;
 
         if (charging
             && Number.isFinite(battery.chargingTime)
             && battery.chargingTime !== Infinity) {
-            text += ` — Carica completa in ${Math.round(battery.chargingTime / 60)} min`;
+            text += ` — ${T('js.bs.bat.full_in').replace('{0}', String(Math.round(battery.chargingTime / 60)))}`;
         } else if (!charging
             && Number.isFinite(battery.dischargingTime)
             && battery.dischargingTime !== Infinity) {
-            text += ` — Scarica in ${Math.round(battery.dischargingTime / 60)} min`;
+            text += ` — ${T('js.bs.bat.empty_in').replace('{0}', String(Math.round(battery.dischargingTime / 60)))}`;
         }
 
         el.textContent = text;

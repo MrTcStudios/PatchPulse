@@ -3,6 +3,7 @@ set_time_limit(600);
 ini_set('display_errors', 0);
 error_reporting(0);
 include("config.php");
+require_once __DIR__ . "/lang/lang.php";
 
 ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_secure', 1);
@@ -14,11 +15,13 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// ── Autenticazione ──
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     exit;
 }
 
+// ── Validazione scanId ──
 $scanId = $_GET['scanId'] ?? '';
 if (!preg_match('/^[a-f0-9]{32}$/', $scanId)) {
     http_response_code(400);
@@ -32,17 +35,20 @@ if (!isset($_SESSION['scan_' . $scanId])) {
 
 $scan = $_SESSION['scan_' . $scanId];
 
+// Verifica proprietà
 if ($scan['user_id'] !== $_SESSION['user_id']) {
     http_response_code(403);
     exit;
 }
 
+// Timeout scansione (10 minuti)
 if (time() - $scan['start_time'] > 600) {
     unset($_SESSION['scan_' . $scanId]);
     http_response_code(408);
     exit;
 }
 
+// ── Validazione interna dei dati di sessione ──
 $allowedScans = ['nmap','testssl','headers','dnsrecon','extra','whois','emailsec','robots','redirects'];
 $scans = array_filter($scan['scans'], fn($s) => in_array($s, $allowedScans, true));
 if (empty($scans) || !filter_var($scan['target'], FILTER_VALIDATE_URL)) {
@@ -51,14 +57,19 @@ if (empty($scans) || !filter_var($scan['target'], FILTER_VALIDATE_URL)) {
     exit;
 }
 
+// Dati letti — rimuovi la scansione dalla sessione e RILASCIA IL LOCK.
+// Senza questo, tutte le altre richieste dello stesso utente restano
+// bloccate su session_start() per tutta la durata dello streaming.
 unset($_SESSION['scan_' . $scanId]);
 session_write_close();
 
+// ── Header SSE + sicurezza ──
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('X-Content-Type-Options: nosniff');
 header('X-Accel-Buffering: no');
 
+// Token auth per comunicazione con lo scanner
 $scannerToken = getenv('SCANNER_AUTH_TOKEN') ?: '';
 
 $headers = ['Content-Type: application/json'];
@@ -80,6 +91,7 @@ curl_setopt_array($ch, [
     CURLOPT_TIMEOUT        => 600,
     CURLOPT_CONNECTTIMEOUT => 5,
     CURLOPT_WRITEFUNCTION  => function ($ch, $data) use (&$isFirstChunk) {
+        // Il primo chunk potrebbe essere un errore JSON (503 busy, 429, ecc.)
         if ($isFirstChunk) {
             $isFirstChunk = false;
             $decoded = json_decode(trim($data), true);
@@ -114,7 +126,8 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 if ($curlError) {
-    echo "data: " . json_encode(['line' => 'Errore connessione al servizio di scansione.']) . "\n\n";
+    // Non esporre dettagli interni dell'errore
+    echo "data: " . json_encode(['line' => t('ss.stream_connection_error', false)]) . "\n\n";
 }
 
 echo "data: " . json_encode(['completed' => true]) . "\n\n";

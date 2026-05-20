@@ -6,6 +6,8 @@
  *  - Si aggiunge il caso "localhost", che è considerato secure context anche
  *    via http (utile in dev senza far apparire warning fuorvianti).
  */
+import { T } from '../lang/t.js';
+
 export function checkHttpsOnly() {
     const el = document.getElementById('httpsOnly');
     if (!el) {
@@ -18,12 +20,12 @@ export function checkHttpsOnly() {
     const isLocal  = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
 
     if (isHttps && isSecure) {
-        el.innerText = 'HTTPS attivo (connessione sicura)';
+        el.innerText = T('js.bs.https.active');
     } else if (isHttps && !isSecure) {
-        el.innerText = 'HTTPS attivo, ma contesto non sicuro (probabile mixed content)';
+        el.innerText = T('js.bs.https.mixed');
     } else if (!isHttps && isLocal) {
-        el.innerText = 'HTTP locale (sviluppo)';
+        el.innerText = T('js.bs.https.http_local');
     } else {
-        el.innerText = 'HTTPS non attivo (connessione non sicura)';
+        el.innerText = T('js.bs.https.http_unsafe');
     }
 }

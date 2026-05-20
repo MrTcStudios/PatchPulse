@@ -17,26 +17,28 @@ $db_pass = getenv('DB_PASS');
 
 $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
 if ($conn->connect_error) {
-    $_SESSION['email_change_message'] = "Errore interno. Riprova.";
+    $_SESSION['email_change_message'] = "flash.internal_error_retry";
     header("Location: ../account.php");
     exit();
 }
 
+// Validazione token (64 hex chars)
 $token = $_GET['token'] ?? '';
 if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
-    $_SESSION['email_change_message'] = "Link non valido.";
+    $_SESSION['email_change_message'] = "flash.email.link_invalid";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
 
+// Cerca token e recupera la nuova email
 $stmt = $conn->prepare("SELECT id, temp_email FROM users WHERE confirmation_token = ?");
 $stmt->bind_param("s", $token);
 $stmt->execute();
 $stmt->store_result();
 
 if ($stmt->num_rows === 0) {
-    $_SESSION['email_change_message'] = "Link non valido o già utilizzato.";
+    $_SESSION['email_change_message'] = "flash.email.link_expired";
     $stmt->close();
     $conn->close();
     header("Location: ../account.php");
@@ -48,18 +50,19 @@ $stmt->fetch();
 $stmt->close();
 
 if (empty($temp_email)) {
-    $_SESSION['email_change_message'] = "Nessun cambio email in sospeso.";
+    $_SESSION['email_change_message'] = "flash.email.no_pending";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
 
+// Verifica che la nuova email non sia nel frattempo stata presa
 $check = $conn->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
 $check->bind_param("si", $temp_email, $user_id);
 $check->execute();
 $check->store_result();
 if ($check->num_rows > 0) {
-    $_SESSION['email_change_message'] = "L'email è già in uso da un altro account.";
+    $_SESSION['email_change_message'] = "flash.email.taken_other";
     $check->close();
     $conn->close();
     header("Location: ../account.php");
@@ -67,16 +70,18 @@ if ($check->num_rows > 0) {
 }
 $check->close();
 
+// Aggiorna email e pulisci token
 $update_stmt = $conn->prepare("UPDATE users SET email = ?, temp_email = NULL, confirmation_token = NULL WHERE id = ?");
 $update_stmt->bind_param("si", $temp_email, $user_id);
 
 if ($update_stmt->execute()) {
+    // Aggiorna anche la sessione se è l'utente corrente
     if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $user_id) {
         $_SESSION['email'] = $temp_email;
     }
-    $_SESSION['email_change_message'] = "Email aggiornata con successo.";
+    $_SESSION['email_change_message'] = "flash.email.changed";
 } else {
-    $_SESSION['email_change_message'] = "Errore nell'aggiornamento. Riprova.";
+    $_SESSION['email_change_message'] = "flash.email.update_failed";
 }
 
 $update_stmt->close();

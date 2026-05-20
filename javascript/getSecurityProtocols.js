@@ -9,12 +9,14 @@
  * Sicurezza: nessuna chiamata di rete; tutto avviene tra due RTCPeerConnection
  * locali (loopback). Il DataChannel non scambia dati.
  */
+import { T } from '../lang/t.js';
+
 export async function getSecurityProtocols() {
     const el = document.getElementById('securityProtocols');
     const setText = (t) => { if (el) el.innerText = t; };
 
     if (typeof RTCPeerConnection === 'undefined') {
-        setText('Non disponibile (WebRTC non supportato)');
+        setText(T('js.bs.sec.no_webrtc'));
         return null;
     }
 
@@ -24,7 +26,7 @@ export async function getSecurityProtocols() {
         const map = { 'FEFD': 'DTLS 1.2', 'FEFC': 'DTLS 1.3', 'FEFF': 'DTLS 1.0' };
         if (map[norm]) return map[norm];
         if (/^DTLS\s?1\.[0-9]/i.test(hex) || /^TLS\s?1\.[0-9]/i.test(hex)) return hex;
-        return `sconosciuto (${hex})`;
+        return `${T('js.bs.sec.unknown_prefix')} (${hex})`;
     };
 
     let pc1, pc2, dc;
@@ -73,20 +75,21 @@ export async function getSecurityProtocols() {
         const tlsDecoded = tlsVersion ? decodeTls(tlsVersion) : null;
 
         if (!dtlsCipher && !tlsDecoded && !srtpCipher) {
-            setText('Non esposto dal browser');
+            setText(T('js.bs.sec.not_exposed'));
             return null;
         }
 
+        const nd = T('js.bs.nd');
         const parts = [];
-        parts.push(`DTLS cipher: ${dtlsCipher || 'N/D'}`);
-        parts.push(`Versione: ${tlsDecoded || 'N/D'}`);
-        parts.push(`SRTP cipher: ${srtpCipher || 'N/D'}`);
+        parts.push(`${T('js.bs.sec.label_dtls')}: ${dtlsCipher || nd}`);
+        parts.push(`${T('js.bs.sec.label_version')}: ${tlsDecoded || nd}`);
+        parts.push(`${T('js.bs.sec.label_srtp')}: ${srtpCipher || nd}`);
 
         setText(parts.join(' | '));
         return { dtlsCipher, tlsVersion: tlsDecoded || tlsVersion, srtpCipher };
     } catch (err) {
         console.debug('getSecurityProtocols error:', err && err.message);
-        setText('Non rilevabile');
+        setText(T('js.bs.sec.undetectable'));
         return null;
     } finally {
         try { if (dc)  dc.close(); }  catch (_) {}

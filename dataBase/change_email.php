@@ -10,6 +10,8 @@ ini_set('session.use_only_cookies', 1);
 
 session_start();
 
+require_once __DIR__ . "/../lang/lang.php";
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../log-reg.php");
     exit();
@@ -20,9 +22,10 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST" || !isset($_POST['change_email'])) {
     exit();
 }
 
+// CSRF
 $csrfToken = $_POST['csrf_token'] ?? '';
 if (empty($csrfToken) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
-    $_SESSION['email_change_message'] = "Richiesta non valida. Riprova.";
+    $_SESSION['email_change_message'] = "flash.invalid_request";
     header("Location: ../account.php");
     exit();
 }
@@ -34,7 +37,7 @@ $db_pass = getenv('DB_PASS');
 
 $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
 if ($conn->connect_error) {
-    $_SESSION['email_change_message'] = "Errore interno. Riprova più tardi.";
+    $_SESSION['email_change_message'] = "flash.internal_error";
     header("Location: ../account.php");
     exit();
 }
@@ -50,20 +53,23 @@ $user_id = (int)$_SESSION['user_id'];
 $current_password = $_POST['current_password'] ?? '';
 $new_email = filter_var(trim($_POST['new_email'] ?? ''), FILTER_SANITIZE_EMAIL);
 
+// Validazione nuova email
 if (!filter_var($new_email, FILTER_VALIDATE_EMAIL)) {
-    $_SESSION['email_change_message'] = "La nuova email non è valida.";
+    $_SESSION['email_change_message'] = "flash.email.invalid_new";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
 
+// Richiedi password per operazioni sensibili
 if (empty($current_password)) {
-    $_SESSION['email_change_message'] = "Inserisci la password attuale per confermare.";
+    $_SESSION['email_change_message'] = "flash.email.need_password";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
 
+// Verifica password e email corrente
 $stmt = $conn->prepare("SELECT email, password FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -72,25 +78,27 @@ $stmt->fetch();
 $stmt->close();
 
 if (!password_verify($current_password, $hashed_password)) {
-    $_SESSION['email_change_message'] = "Password non corretta.";
+    $_SESSION['email_change_message'] = "flash.email.wrong_password";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
 
+// Nuova email uguale alla corrente
 if ($new_email === $db_email) {
-    $_SESSION['email_change_message'] = "La nuova email è uguale a quella attuale.";
+    $_SESSION['email_change_message'] = "flash.email.same";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
 
+// Verifica che la nuova email non sia già in uso
 $check_stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
 $check_stmt->bind_param("s", $new_email);
 $check_stmt->execute();
 $check_stmt->store_result();
 if ($check_stmt->num_rows > 0) {
-    $_SESSION['email_change_message'] = "L'email inserita è già in uso.";
+    $_SESSION['email_change_message'] = "flash.email.taken";
     $check_stmt->close();
     $conn->close();
     header("Location: ../account.php");
@@ -98,13 +106,14 @@ if ($check_stmt->num_rows > 0) {
 }
 $check_stmt->close();
 
+// Genera token di conferma
 $confirmation_token = bin2hex(random_bytes(32));
 
 $update_stmt = $conn->prepare("UPDATE users SET temp_email = ?, confirmation_token = ? WHERE id = ?");
 $update_stmt->bind_param("ssi", $new_email, $confirmation_token, $user_id);
 
 if (!$update_stmt->execute()) {
-    $_SESSION['email_change_message'] = "Errore interno. Riprova.";
+    $_SESSION['email_change_message'] = "flash.internal_error_retry";
     $update_stmt->close();
     $conn->close();
     header("Location: ../account.php");
@@ -112,6 +121,7 @@ if (!$update_stmt->execute()) {
 }
 $update_stmt->close();
 
+// Log attività
 $user_ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'unknown';
 if (!filter_var($user_ip, FILTER_VALIDATE_IP)) {
     $user_ip = 'unknown';
@@ -122,6 +132,7 @@ $log_stmt->bind_param("is", $user_id, $user_ip);
 $log_stmt->execute();
 $log_stmt->close();
 
+// Invia email di conferma
 $appDomain = getenv('APP_DOMAIN') ?: 'patchpulse.org';
 $confirmation_link = "https://{$appDomain}/dataBase/confirm_email_change.php?token=" . urlencode($confirmation_token);
 
@@ -140,14 +151,14 @@ try {
     $mail->addAddress($new_email);
 
     $mail->isHTML(true);
-    $mail->Subject = 'Conferma cambio email';
-    $mail->Body = "<p>Per confermare il cambio della tua email, clicca sul <a href='" . htmlspecialchars($confirmation_link, ENT_QUOTES, 'UTF-8') . "'>link di conferma</a>.</p><p>Se non hai richiesto questa operazione, ignora questa email.</p>";
+    $mail->Subject = t('mail.change_email.subject', false);
+    $mail->Body = str_replace('{0}', htmlspecialchars($confirmation_link, ENT_QUOTES, 'UTF-8'), t('mail.change_email.body', false));
 
     $mail->send();
-    $_SESSION['email_change_message'] = "Email di conferma inviata alla nuova email.";
+    $_SESSION['email_change_message'] = "flash.email.sent_confirm";
 } catch (Exception $e) {
     error_log("PHPMailer error: " . $mail->ErrorInfo);
-    $_SESSION['email_change_message'] = "Errore nell'invio dell'email. Riprova.";
+    $_SESSION['email_change_message'] = "flash.email.send_failed";
 }
 
 $conn->close();

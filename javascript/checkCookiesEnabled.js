@@ -8,6 +8,8 @@
  * Nota privacy: il cookie viene scritto solo per il test e cancellato subito.
  * Non finisce né sul server né viene persistito.
  */
+import { T } from '../lang/t.js';
+
 export function checkCookiesEnabled() {
     const el = document.getElementById('cookiesEnabled');
     if (!el) {
@@ -32,11 +34,11 @@ export function checkCookiesEnabled() {
     }
 
     if (apiSays && realTest) {
-        el.innerText = 'Sì';
+        el.innerText = T('js.bs.yes');
     } else if (!apiSays && !realTest) {
-        el.innerText = 'No';
+        el.innerText = T('js.bs.no');
     } else {
         // Caso ambiguo (es. Brave che blocca i cookie persistenti ma riporta true)
-        el.innerText = realTest ? 'Sì (parziale)' : 'No (parziale)';
+        el.innerText = realTest ? T('js.bs.yes_partial') : T('js.bs.no_partial');
     }
 }

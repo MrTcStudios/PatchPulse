@@ -5,6 +5,8 @@
  * non era affatto disponibile (es. iOS Safari < 16.4) → falso positivo.
  * Ora distinguiamo tre stati: non supportato / negato / disponibile.
  */
+import { T } from '../lang/t.js';
+
 export function checkWebNotificationsSupport() {
     const el = document.getElementById('webNotificationsSupported');
     if (!el) {
@@ -13,19 +15,19 @@ export function checkWebNotificationsSupport() {
     }
 
     if (typeof window === 'undefined' || !('Notification' in window)) {
-        el.textContent = 'Non supportate';
+        el.textContent = T('js.bs.notif.unsupported');
         return;
     }
 
     switch (Notification.permission) {
         case 'granted':
-            el.textContent = 'Sì (consenso concesso)';
+            el.textContent = T('js.bs.notif.granted');
             break;
         case 'denied':
-            el.textContent = 'No (consenso negato)';
+            el.textContent = T('js.bs.notif.denied');
             break;
         case 'default':
         default:
-            el.textContent = 'Sì (richiede consenso)';
+            el.textContent = T('js.bs.notif.default');
     }
 }
