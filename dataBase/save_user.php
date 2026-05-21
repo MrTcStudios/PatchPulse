@@ -13,6 +13,7 @@ ini_set('display_errors', 0);
 error_reporting(0);
 
 require_once __DIR__ . "/../lang/lang.php";
+require_once __DIR__ . "/../security/rate_limiter.php";
 
 require '../PHPMailer/src/Exception.php';
 require '../PHPMailer/src/PHPMailer.php';
@@ -76,6 +77,17 @@ $responseData = $result ? json_decode($result) : null;
 
 if (!$responseData || !$responseData->success) {
     $_SESSION['registration_message'] = "flash.captcha_failed";
+    header("Location: ../log-reg.php");
+    exit();
+}
+
+// ── Rate limit per IP (anti-flood registrazioni) ──
+$regIp = rl_client_ip();
+$regId = rl_identifier($regIp);
+$retryAfter = 0;
+if (!rl_consume($conn, 'register.attempt', $regId, 5, 900, $retryAfter)) {
+    $_SESSION['registration_message'] = "flash.too_many_requests";
+    $conn->close();
     header("Location: ../log-reg.php");
     exit();
 }
@@ -145,7 +157,6 @@ $stmt->execute();
 $stmt->store_result();
 
 if ($stmt->num_rows > 0) {
-    // Messaggio generico per non rivelare se l'email esiste
     $_SESSION['registration_message'] = "flash.register.email_sent";
     $stmt->close();
     $conn->close();
@@ -155,7 +166,7 @@ if ($stmt->num_rows > 0) {
 $stmt->close();
 
 // ── Registrazione ──
-// Hash con bcrypt cost 12 (più sicuro del default 10)
+// Hash con bcrypt cost 12
 $hashed_password = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
 $confirmation_token = bin2hex(random_bytes(32));
 
@@ -205,11 +216,9 @@ try {
 
     $mail->send();
 } catch (Exception $e) {
-    // Log interno, non esporre ErrorInfo all'utente
     error_log("PHPMailer error: " . $mail->ErrorInfo);
 }
 
-// Messaggio generico (non rivela se l'email era già registrata)
 $_SESSION['registration_message'] = "flash.register.email_sent";
 $conn->close();
 header("Location: ../log-reg.php");

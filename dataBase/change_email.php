@@ -11,6 +11,7 @@ ini_set('session.use_only_cookies', 1);
 session_start();
 
 require_once __DIR__ . "/../lang/lang.php";
+require_once __DIR__ . "/../security/rate_limiter.php";
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../log-reg.php");
@@ -50,6 +51,17 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 $user_id = (int)$_SESSION['user_id'];
+
+// Brute force protection: 5 tentativi falliti → lockout 15 min.
+$emailAction     = 'change_email.attempt';
+$emailIdentifier = rl_identifier((string)$user_id);
+if (rl_lockout_remaining($conn, $emailAction, $emailIdentifier) > 0) {
+    $_SESSION['email_change_message'] = "flash.login.too_many";
+    $conn->close();
+    header("Location: ../account.php");
+    exit();
+}
+
 $current_password = $_POST['current_password'] ?? '';
 $new_email = filter_var(trim($_POST['new_email'] ?? ''), FILTER_SANITIZE_EMAIL);
 
@@ -78,11 +90,15 @@ $stmt->fetch();
 $stmt->close();
 
 if (!password_verify($current_password, $hashed_password)) {
+    rl_register_failure($conn, $emailAction, $emailIdentifier, 5, 900);
     $_SESSION['email_change_message'] = "flash.email.wrong_password";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
+
+// Password corretta: reset contatore
+rl_clear_failures($conn, $emailAction, $emailIdentifier);
 
 // Nuova email uguale alla corrente
 if ($new_email === $db_email) {

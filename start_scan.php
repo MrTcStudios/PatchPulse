@@ -4,6 +4,7 @@ error_reporting(0);
 header('Content-Type: application/json');
 include("config.php");
 require_once __DIR__ . "/lang/lang.php";
+require_once __DIR__ . "/security/rate_limiter.php";
 
 // ── Cookie di sessione hardened ──
 ini_set('session.cookie_httponly', 1);
@@ -43,24 +44,25 @@ try {
         throw new Exception(t('vd.csrf_invalid', false), 403);
     }
 
-    // ── Rate Limiting per utente ──
-    $userId = $_SESSION['user_id'];
-    $rateKey = 'rate_' . $userId;
-    $rateWindow = 600; // 10 minuti
-    $rateMax = 15;     // max 15 scansioni per finestra
+    // ── Rate Limiting persistente per utente (DB) ──
+    // Era basato su $_SESSION e bypassabile con logout/login o reset cookie:
+    // ora il contatore vive nel DB legato all'user_id.
+    $userId         = (int)$_SESSION['user_id'];
+    $now            = time();
+    $scanAction     = 'scan.start';
+    $scanIdentifier = rl_identifier((string)$userId);
+    $rateWindow     = 600; // 10 minuti
+    $rateMax        = 15;  // max 15 scansioni per finestra
 
-    if (!isset($_SESSION[$rateKey])) {
-        $_SESSION[$rateKey] = [];
-    }
-
-    $now = time();
-    // Pulisci entry scadute
-    $_SESSION[$rateKey] = array_filter(
-        $_SESSION[$rateKey],
-        fn($t) => ($now - $t) < $rateWindow
+    $rlConn = new mysqli(
+        getenv('DB_HOST'), getenv('DB_USER'), getenv('DB_PASS'), getenv('DB_NAME')
     );
-
-    if (count($_SESSION[$rateKey]) >= $rateMax) {
+    if ($rlConn->connect_error) {
+        throw new Exception(t('vd.internal_error', false), 500);
+    }
+    $rlCheck = rl_check_window($rlConn, $scanAction, $scanIdentifier, $rateMax, $rateWindow);
+    if (!$rlCheck['allowed']) {
+        $rlConn->close();
         throw new Exception(t('ss.too_many_scans', false), 429);
     }
 
@@ -238,8 +240,9 @@ try {
         'user_id'    => $userId,
     ];
 
-    // Registra la scansione nel rate limiter
-    $_SESSION[$rateKey][] = $now;
+    // Registra la scansione nel rate limiter persistente
+    rl_record($rlConn, $scanAction, $scanIdentifier);
+    $rlConn->close();
 
     echo json_encode(['scanId' => $scanId, 'status' => 'started']);
 

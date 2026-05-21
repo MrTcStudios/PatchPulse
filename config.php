@@ -1,4 +1,12 @@
 <?php
+if (
+    isset($_SERVER['SCRIPT_FILENAME'])
+    && realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__)
+) {
+    http_response_code(403);
+    exit('Forbidden');
+}
+
 ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_secure', 1);
 ini_set('session.cookie_samesite', 'Strict');
@@ -29,7 +37,6 @@ if ($conn->connect_error) {
     exit('Database connection failed.');
 }
 
-// Manutenzione: controlla dal DB (il filesystem è read-only)
 if (!isset($_SESSION['admin']) || $_SESSION['admin'] !== true) {
     $mStmt = $conn->prepare("SELECT setting_value FROM site_settings WHERE setting_key = 'maintenance_mode'");
     if ($mStmt) {

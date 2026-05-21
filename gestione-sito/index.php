@@ -10,6 +10,8 @@ ini_set('session.use_only_cookies', 1);
 
 session_start();
 
+require_once __DIR__ . "/../security/rate_limiter.php";
+
 // Se già loggato, vai alla dashboard
 if (isset($_SESSION['admin']) && $_SESSION['admin'] === true) {
     header("Location: dashboard.php");
@@ -23,18 +25,30 @@ if (empty($_SESSION['admin_csrf'])) {
 
 $errore = '';
 
+// Connessione DB (per rate limiter persistente). Apri solo per POST per
+// non sprecare connessioni alla pagina di GET.
+$rlConn = null;
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $rlConn = @new mysqli(getenv('DB_HOST'), getenv('DB_USER'), getenv('DB_PASS'), getenv('DB_NAME'));
+    if (!$rlConn || $rlConn->connect_errno) {
+        $rlConn = null;
+        $errore = "Servizio non disponibile, riprova più tardi.";
+    }
+}
+
+$adminAction = 'admin.login';
+$adminIpId   = rl_identifier(rl_client_ip());
+
+if ($_SERVER["REQUEST_METHOD"] === "POST" && $rlConn) {
     // CSRF
     $csrf = $_POST['csrf_token'] ?? '';
     if (empty($csrf) || !isset($_SESSION['admin_csrf']) || !hash_equals($_SESSION['admin_csrf'], $csrf)) {
         $errore = "Richiesta non valida. Riprova.";
     } else {
-        // Brute force protection
-        $attemptsKey = 'admin_login_attempts';
-        $lockoutKey = 'admin_lockout_until';
-
-        if (isset($_SESSION[$lockoutKey]) && time() < $_SESSION[$lockoutKey]) {
-            $remaining = $_SESSION[$lockoutKey] - time();
+        // Brute force protection persistente per IP (5 tentativi → 10 min lockout).
+        // Bypass via session reset NON è più possibile: persistito nel DB.
+        $remaining = rl_lockout_remaining($rlConn, $adminAction, $adminIpId);
+        if ($remaining > 0) {
             $errore = "Troppi tentativi. Riprova tra {$remaining} secondi.";
         } else {
             // Turnstile CAPTCHA
@@ -78,25 +92,30 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         if ($usernameMatch && $passwordMatch) {
                             // Login riuscito
                             session_regenerate_id(true);
-                            unset($_SESSION[$attemptsKey], $_SESSION[$lockoutKey]);
+                            rl_clear_failures($rlConn, $adminAction, $adminIpId);
                             $_SESSION['admin'] = true;
                             $_SESSION['admin_ip'] = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['REMOTE_ADDR'];
                             $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
+                            $rlConn->close();
                             header("Location: dashboard.php");
                             exit;
                         } else {
-                            $_SESSION[$attemptsKey] = ($_SESSION[$attemptsKey] ?? 0) + 1;
-                            if ($_SESSION[$attemptsKey] >= 5) {
-                                $_SESSION[$lockoutKey] = time() + 600; // 10 minuti
-                                $_SESSION[$attemptsKey] = 0;
+                            $lockedFor = rl_register_failure($rlConn, $adminAction, $adminIpId, 5, 600);
+                            if ($lockedFor > 0) {
+                                $errore = "Troppi tentativi. Riprova tra {$lockedFor} secondi.";
+                            } else {
+                                $errore = "Credenziali errate.";
                             }
-                            $errore = "Credenziali errate.";
                         }
                     }
                 }
             }
         }
     }
+}
+
+if ($rlConn) {
+    $rlConn->close();
 }
 
 $siteKey = getenv('TURNSTILE_SITE_KEY') ?: '0x4AAAAAACxRHR_H4N6K4-b5';

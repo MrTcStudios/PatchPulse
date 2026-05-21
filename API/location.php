@@ -5,19 +5,28 @@ error_reporting(0);
 header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
 
-session_start();
 require_once __DIR__ . "/../lang/lang.php";
+require_once __DIR__ . "/../security/rate_limiter.php";
 
-$rateKey = 'loc_requests';
-$now = time();
-$_SESSION[$rateKey] = array_filter($_SESSION[$rateKey] ?? [], fn($t) => ($now - $t) < 60);
-if (count($_SESSION[$rateKey]) >= 10) {
-    http_response_code(429);
+// Rate limit persistente su IP (10/min). Sopravvive a reset di sessione.
+$rlIp = rl_client_ip();
+$rlId = rl_identifier($rlIp);
+$rlDb = @new mysqli(getenv('DB_HOST'), getenv('DB_USER'), getenv('DB_PASS'), getenv('DB_NAME'));
+if (!$rlDb || $rlDb->connect_errno) {
+    // Fail-closed: senza DB non possiamo applicare il limite, rifiuta.
+    http_response_code(503);
     echo json_encode(['error' => t('api.rate_limit', false)]);
     exit();
 }
-$_SESSION[$rateKey][] = $now;
-session_write_close();
+$retryAfter = 0;
+if (!rl_consume($rlDb, 'api.location', $rlId, 10, 60, $retryAfter)) {
+    $rlDb->close();
+    http_response_code(429);
+    header('Retry-After: ' . max(1, $retryAfter));
+    echo json_encode(['error' => t('api.rate_limit', false)]);
+    exit();
+}
+$rlDb->close();
 
 $token = getenv('IPINFO_TOKEN');
 if (empty($token)) {

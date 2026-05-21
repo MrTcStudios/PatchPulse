@@ -1,7 +1,6 @@
 <?php
-// Mostra errori temporaneamente per debug — rimuovi in produzione
 ini_set('display_errors', 0);
-error_reporting(E_ALL);
+error_reporting(0);
 
 ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_secure', 1);
@@ -11,6 +10,7 @@ ini_set('session.use_only_cookies', 1);
 
 include("../config.php");
 require_once __DIR__ . "/../lang/lang.php";
+require_once __DIR__ . "/../security/rate_limiter.php";
 
 header('Content-Type: application/json');
 
@@ -35,10 +35,38 @@ if (!isset($_SESSION['user_id'])) {
     pp_save_error(401, 'vd.unauthorized');
 }
 
-// Leggi JSON body
-$rawInput = file_get_contents('php://input');
+$user_id = (int)$_SESSION['user_id'];
+
+// Rate limit persistente per user_id: max 10 salvataggi / 10 min.
+// Senza questo, un utente loggato può riempire la tabella scans in pochi minuti.
+$saveAction = 'browser_scan.save';
+$saveId     = rl_identifier((string)$user_id);
+$retryAfter = 0;
+if (!rl_consume($conn, $saveAction, $saveId, 10, 600, $retryAfter)) {
+    http_response_code(429);
+    header('Retry-After: ' . max(1, $retryAfter));
+    echo json_encode([
+        'success' => false,
+        'error'   => t('ss.too_many_scans', false),
+        'code'    => 'rate_limited',
+    ]);
+    exit;
+}
+
+// Cap dimensione body (anti-OOM): 65 KB. 39 campi × 1000 char in chiaro stanno
+// largamente sotto.
+$contentLen = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+if ($contentLen > 65536) {
+    pp_save_error(413, 'ss.payload_too_big');
+}
+
+// Leggi JSON body (limita a 65537 byte per detectare overflow oltre il cap).
+$rawInput = file_get_contents('php://input', false, null, 0, 65537);
 if (empty($rawInput)) {
     pp_save_error(400, 'vd.invalid_request');
+}
+if (strlen($rawInput) > 65536) {
+    pp_save_error(413, 'ss.payload_too_big');
 }
 
 $input = json_decode($rawInput, true);
@@ -66,8 +94,6 @@ $scanData = json_decode($decoded, true);
 if (!is_array($scanData)) {
     pp_save_error(400, 'vd.json_invalid');
 }
-
-$user_id = (int)$_SESSION['user_id'];
 
 function encryptData($data) {
     global $encKey;

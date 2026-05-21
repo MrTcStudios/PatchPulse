@@ -12,6 +12,8 @@ session_start();
 ini_set('display_errors', 0);
 error_reporting(0);
 
+require_once __DIR__ . "/../security/rate_limiter.php";
+
 $db_host = getenv('DB_HOST');
 $db_name = getenv('DB_NAME');
 $db_user = getenv('DB_USER');
@@ -72,12 +74,12 @@ if (!$responseData || !$responseData->success) {
 }
 
 
-// ── Brute force protection (per-IP, session-based) ──
-$loginAttemptsKey = 'login_attempts';
-$loginLockoutKey = 'login_lockout_until';
+// ── Brute force protection (persistente per IP) ──
+// 5 tentativi falliti → lockout 5 minuti. Sopravvive a session reset/incognito.
+$loginAction = 'login.attempt';
+$loginIpId   = rl_identifier(rl_client_ip());
 
-if (isset($_SESSION[$loginLockoutKey]) && time() < $_SESSION[$loginLockoutKey]) {
-    $remaining = $_SESSION[$loginLockoutKey] - time();
+if (rl_lockout_remaining($conn, $loginAction, $loginIpId) > 0) {
     $_SESSION['login_message'] = "flash.login.too_many";
     header("Location: ../log-reg.php");
     exit();
@@ -113,11 +115,7 @@ if ($stmt->num_rows === 0) {
     // Esegui un hash fittizio per evitare timing attack
     password_verify($password, '$2y$10$dummyhashtopreventtimingattackxxxxxxxxxxxxxxxxxxxxxx');
 
-    $_SESSION[$loginAttemptsKey] = ($_SESSION[$loginAttemptsKey] ?? 0) + 1;
-    if ($_SESSION[$loginAttemptsKey] >= 5) {
-        $_SESSION[$loginLockoutKey] = time() + 300; // 5 minuti
-        $_SESSION[$loginAttemptsKey] = 0;
-    }
+    rl_register_failure($conn, $loginAction, $loginIpId, 5, 300);
 
     $_SESSION['login_message'] = $genericError;
     $stmt->close();
@@ -138,11 +136,7 @@ if (!$is_confirmed) {
 }
 
 if (!password_verify($password, $hashed_password)) {
-    $_SESSION[$loginAttemptsKey] = ($_SESSION[$loginAttemptsKey] ?? 0) + 1;
-    if ($_SESSION[$loginAttemptsKey] >= 5) {
-        $_SESSION[$loginLockoutKey] = time() + 300;
-        $_SESSION[$loginAttemptsKey] = 0;
-    }
+    rl_register_failure($conn, $loginAction, $loginIpId, 5, 300);
 
     $_SESSION['login_message'] = $genericError;
     $stmt->close();
@@ -157,7 +151,7 @@ if (!password_verify($password, $hashed_password)) {
 session_regenerate_id(true);
 
 // Reset tentativi
-unset($_SESSION[$loginAttemptsKey], $_SESSION[$loginLockoutKey]);
+rl_clear_failures($conn, $loginAction, $loginIpId);
 
 $_SESSION['user_id'] = $user_id;
 $_SESSION['email'] = $email;

@@ -11,6 +11,7 @@ ini_set('session.use_only_cookies', 1);
 session_start();
 
 require_once __DIR__ . "/../lang/lang.php";
+require_once __DIR__ . "/../security/rate_limiter.php";
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header("Location: ../log-reg.php");
@@ -21,15 +22,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $csrfToken = $_POST['csrf_token'] ?? '';
 if (empty($csrfToken) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
     $_SESSION['login_message'] = "flash.invalid_request";
-    header("Location: ../log-reg.php");
-    exit();
-}
-
-// Rate limiting: max 3 richieste reset ogni 15 minuti
-$rateKey = 'forgot_attempts';
-$rateLockKey = 'forgot_lockout';
-if (isset($_SESSION[$rateLockKey]) && time() < $_SESSION[$rateLockKey]) {
-    $_SESSION['login_message'] = "flash.too_many_requests";
     header("Location: ../log-reg.php");
     exit();
 }
@@ -53,6 +45,17 @@ if ($conn->connect_error) {
     exit();
 }
 
+// Rate limiting persistente per IP: 3 richieste / 15 min → lockout 15 min.
+$forgotAction = 'forgot_password.attempt';
+$forgotIpId   = rl_identifier(rl_client_ip());
+
+if (rl_lockout_remaining($conn, $forgotAction, $forgotIpId) > 0) {
+    $conn->close();
+    $_SESSION['login_message'] = "flash.too_many_requests";
+    header("Location: ../log-reg.php");
+    exit();
+}
+
 $email = filter_var(trim($_POST['EmailOfUser'] ?? ''), FILTER_SANITIZE_EMAIL);
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -62,12 +65,9 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     exit();
 }
 
-// Rate limit tracking
-$_SESSION[$rateKey] = ($_SESSION[$rateKey] ?? 0) + 1;
-if ($_SESSION[$rateKey] >= 3) {
-    $_SESSION[$rateLockKey] = time() + 900; // 15 minuti
-    $_SESSION[$rateKey] = 0;
-}
+// Registra il tentativo (anche se l'email non esiste — protegge da enumeration
+// e da abuso del servizio email).
+rl_register_failure($conn, $forgotAction, $forgotIpId, 3, 900);
 
 // Messaggio generico per non rivelare se l'email esiste
 $genericMessage = "Se l'email è registrata, riceverai un link per reimpostare la password.";

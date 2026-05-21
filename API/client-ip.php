@@ -19,21 +19,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
     exit;
 }
 
-// Rate limit (max 30 richieste/minuto per sessione)
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+require_once __DIR__ . '/../security/rate_limiter.php';
+
+// Rate limit persistente su IP (sopravvive a cancellazione cookie/incognito).
+$rlIp = rl_client_ip();
+$rlId = rl_identifier($rlIp);
+$rlDb = @new mysqli(getenv('DB_HOST'), getenv('DB_USER'), getenv('DB_PASS'), getenv('DB_NAME'));
+if ($rlDb && !$rlDb->connect_errno) {
+    $retryAfter = 0;
+    if (!rl_consume($rlDb, 'api.client_ip', $rlId, 30, 60, $retryAfter)) {
+        $rlDb->close();
+        http_response_code(429);
+        header('Retry-After: ' . max(1, $retryAfter));
+        echo json_encode(['error' => 'Too many requests']);
+        exit;
+    }
+    $rlDb->close();
 }
-$rateKey = 'ip_requests';
-$now = time();
-$_SESSION[$rateKey] = array_filter($_SESSION[$rateKey] ?? [], fn($t) => ($now - $t) < 60);
-if (count($_SESSION[$rateKey]) >= 30) {
-    http_response_code(429);
-    echo json_encode(['error' => 'Too many requests']);
-    session_write_close();
-    exit;
-}
-$_SESSION[$rateKey][] = $now;
-session_write_close();
 
 /**
  * Restituisce l'IP reale del client.

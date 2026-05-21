@@ -11,6 +11,7 @@ ini_set('session.use_only_cookies', 1);
 session_start();
 
 require_once __DIR__ . "/../lang/lang.php";
+require_once __DIR__ . "/../security/rate_limiter.php";
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../log-reg.php");
@@ -50,6 +51,17 @@ if ($conn->connect_error) {
 }
 
 $user_id = (int)$_SESSION['user_id'];
+
+// Brute force protection: 5 tentativi falliti → lockout 15 min.
+$pwdAction     = 'change_password.attempt';
+$pwdIdentifier = rl_identifier((string)$user_id);
+if (rl_lockout_remaining($conn, $pwdAction, $pwdIdentifier) > 0) {
+    $_SESSION['password_change_message'] = "flash.login.too_many";
+    $conn->close();
+    header("Location: ../account.php");
+    exit();
+}
+
 // NON applicare htmlspecialchars alle password
 $current_password = $_POST['current_password'] ?? '';
 $new_password = $_POST['new_password'] ?? '';
@@ -99,6 +111,7 @@ $stmt->fetch();
 $stmt->close();
 
 if (!password_verify($current_password, $hashed_password)) {
+    rl_register_failure($conn, $pwdAction, $pwdIdentifier, 5, 900);
     $_SESSION['password_change_message'] = "flash.password.wrong_current";
     $conn->close();
     header("Location: ../account.php");
@@ -119,6 +132,9 @@ if (!$update_stmt->execute()) {
     exit();
 }
 $update_stmt->close();
+
+// Reset contatore tentativi dopo successo
+rl_clear_failures($conn, $pwdAction, $pwdIdentifier);
 
 // Rigenera sessione dopo cambio password
 session_regenerate_id(true);

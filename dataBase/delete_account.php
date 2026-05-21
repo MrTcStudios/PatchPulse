@@ -11,6 +11,7 @@ ini_set('session.use_only_cookies', 1);
 session_start();
 
 require_once __DIR__ . "/../lang/lang.php";
+require_once __DIR__ . "/../security/rate_limiter.php";
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../log-reg.php");
@@ -59,6 +60,16 @@ if ($conn->connect_error) {
 
 $user_id = (int)$_SESSION['user_id'];
 
+// Brute force protection: 3 tentativi falliti → lockout 30 min.
+$delAction     = 'delete_account.attempt';
+$delIdentifier = rl_identifier((string)$user_id);
+if (rl_lockout_remaining($conn, $delAction, $delIdentifier) > 0) {
+    $_SESSION['account_delete_message'] = "flash.login.too_many";
+    $conn->close();
+    header("Location: ../account.php");
+    exit();
+}
+
 // Verifica password
 $stmt = $conn->prepare("SELECT email, name, password FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
@@ -68,11 +79,15 @@ $stmt->fetch();
 $stmt->close();
 
 if (!$user_email || !password_verify($password, $hashed_password)) {
+    rl_register_failure($conn, $delAction, $delIdentifier, 3, 1800);
     $_SESSION['account_delete_message'] = "flash.email.wrong_password";
     $conn->close();
     header("Location: ../account.php");
     exit();
 }
+
+// Password corretta: reset contatore
+rl_clear_failures($conn, $delAction, $delIdentifier);
 
 // Genera token di eliminazione (32 bytes = 64 hex)
 $token = bin2hex(random_bytes(32));
