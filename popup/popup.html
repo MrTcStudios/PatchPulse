@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="../icons/icon.svg" alt="" class="logo">
+    <div>
+      <h1>PatchPulse</h1>
+      <p class="tagline" data-i18n="tagline">Protezione anti-phishing</p>
+    </div>
+  </header>
+
+  <section class="add">
+    <button id="add-current" class="btn-primary" data-i18n="addCurrent">+ Proteggi il sito attuale</button>
+    <div class="manual">
+      <input id="domain-input" type="text" data-i18n-placeholder="inputPlaceholder" placeholder="oppure: esempio.com" autocomplete="off" spellcheck="false">
+      <button id="add-btn" data-i18n="addBtn">Aggiungi</button>
+    </div>
+    <p id="msg" class="msg"></p>
+  </section>
+
+  <section class="list-section">
+    <div class="list-head">
+      <span data-i18n="listHead">Domini protetti</span>
+      <span id="count" class="count">0</span>
+    </div>
+    <ul id="domain-list"></ul>
+  </section>
+
+  <footer>
+    <span id="status" data-i18n="statusActive">Protezione attiva</span>
+    <span id="blocked" class="blocked"></span>
+  </footer>
+
+  <script src="../lib/i18n.js"></script>
+  <script src="../lib/match.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

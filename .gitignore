@@ -1,0 +1,9 @@
+# Pacchetti generati per lo store
+*.zip
+
+# File di sistema / editor
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+*.swp

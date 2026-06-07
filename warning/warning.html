@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>PatchPulse</title>
+  <link rel="stylesheet" href="warning.css">
+</head>
+<body>
+  <main class="card">
+    <img src="../icons/icon.svg" alt="" class="logo">
+    <div class="badge" data-i18n="badge">PatchPulse · Avviso di sicurezza</div>
+    <h1 data-i18n="warnTitle">Attenzione: possibile sito truffa</h1>
+    <p class="lead" data-i18n="warnLead">
+      Stai per entrare in un sito che assomiglia molto a un sito ufficiale.
+      Potrebbe essere un tentativo di phishing per rubarti dati, password o denaro.
+    </p>
+
+    <div class="compare">
+      <div class="row danger">
+        <span class="label" data-i18n="labelVisiting">Stai visitando</span>
+        <span id="suspicious" class="value"></span>
+      </div>
+      <div class="row safe">
+        <span class="label" data-i18n="labelLooksLike">Assomiglia a</span>
+        <span id="official" class="value"></span>
+      </div>
+    </div>
+
+    <p class="why-flagged" id="reason"></p>
+
+    <div class="actions">
+      <button id="back" class="btn-primary" data-i18n="btnBack">Torna indietro (consigliato)</button>
+      <button id="trust" class="btn-trust">Conosco questo sito: aggiungilo ai protetti e vai</button>
+      <button id="proceed" class="btn-ghost" data-i18n="btnProceed">Vai comunque, solo questa volta</button>
+    </div>
+
+    <p class="hint" data-i18n="warnHint">
+      Se conosci e ti fidi di questo sito, puoi aggiungerlo ai tuoi domini ufficiali
+      dall'icona di PatchPulse nella barra del browser.
+    </p>
+  </main>
+
+  <script src="../lib/i18n.js"></script>
+  <script src="warning.js"></script>
+</body>
+</html>
