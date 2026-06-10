@@ -19,7 +19,7 @@
    ============================================================ */
 
 const MAX_DOMAINS = 5000;     // tetto di sicurezza alla lista personalizzabile
-const DEFAULTS_VERSION = 2;   // alza questo numero ogni volta che amplii DEFAULT_DOMAINS
+const DEFAULTS_VERSION = 3;   // alza questo numero ogni volta che amplii DEFAULT_DOMAINS
 
 let officialDomains = [];
 let officialIndex = [];   // pre-calcolo: [{ domain, norm, labels, brand, brandNorm }]
@@ -147,8 +147,12 @@ function findComboSquat(registrable) {
       return o.domain;
     }
     if (flat !== b && flat.length > b.length) {
-      if (flat.startsWith(b) && SUSPICIOUS_WORDS.has(flat.slice(b.length))) return o.domain;
-      if (flat.endsWith(b) && SUSPICIOUS_WORDS.has(flat.slice(0, flat.length - b.length))) return o.domain;
+      // CONCAT_EXCLUDED: "brand+pay" attaccato e' quasi sempre un prodotto
+      // reale del brand (postepay, googlepay...), non un attacco.
+      const suffix = flat.slice(b.length);
+      if (flat.startsWith(b) && SUSPICIOUS_WORDS.has(suffix) && !CONCAT_EXCLUDED.has(suffix)) return o.domain;
+      const prefix = flat.slice(0, flat.length - b.length);
+      if (flat.endsWith(b) && SUSPICIOUS_WORDS.has(prefix) && !CONCAT_EXCLUDED.has(prefix)) return o.domain;
     }
   }
   return null;
