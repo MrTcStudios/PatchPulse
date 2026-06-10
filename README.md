@@ -7,9 +7,13 @@ Unlike blocklists (which only know sites that have already been reported), Patch
 Part of the [PatchPulse](https://patchpulse.org) project.
 
 ## What it catches
-- **Typos / ASCII homoglyphs** — `rnicrosoft.com` (rn→m), `paypa1.com` (1→l), `gogle.com`
+- **Typos / ASCII homoglyphs** — `rnicrosoft.com` (rn→m), `paypa1.com` (1→l), `gogle.com`, swapped letters (`googel.com`)
+- **Hyphen tricks** — `pay-pal.com`, `paypal.com-secure.ru`
 - **Unicode / IDN homographs** — Cyrillic or Greek letters that imitate Latin ones, with `xn--` punycode decoding
-- **An official domain used as a sub-domain** of another — `paypal.com.evil-login.ru`
+- **An official domain used as a sub-domain** of another — `paypal.com.evil-login.ru`, `paypal.com.tk`
+- **Brand as sub-domain with phishing words** — `paypal.secure-verify.ru`
+- **Combo-squatting** — `paypal-login.com`, `applesupport.com`, `secure-paypal.com`
+- **TLD abuse** — the exact brand name on an abuse-prone TLD: `paypal.tk`, `microsoft.top`
 
 ## Installation
 **Firefox** — *coming soon on addons.mozilla.org (link will be added once published).*

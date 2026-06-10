@@ -16,7 +16,13 @@ document.getElementById("suspicious").textContent = suspicious;
 document.getElementById("official").textContent = official;
 
 // Spiega PERCHÉ il sito è stato segnalato.
-const reasonKey = { typo: "reasonTypo", omografi: "reasonHomograph", sottodominio: "reasonSubdomain" }[reason];
+const reasonKey = {
+  typo: "reasonTypo",
+  omografi: "reasonHomograph",
+  sottodominio: "reasonSubdomain",
+  combo: "reasonCombo",
+  tld: "reasonTld"
+}[reason];
 const reasonEl = document.getElementById("reason");
 if (reasonEl && reasonKey) reasonEl.textContent = t(reasonKey);
 
