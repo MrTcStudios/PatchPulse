@@ -80,6 +80,30 @@ async function showBlocked() {
   if (el && blockedCount > 0) el.textContent = blockedCount + " " + t("blockedThreats");
 }
 
+/* Ultime minacce bloccate (max 10, salvate in locale dal background). */
+async function showRecent() {
+  const { recentBlocked = [] } = await browser.storage.local.get("recentBlocked");
+  if (!recentBlocked.length) return;
+  const section = document.getElementById("recent-section");
+  const list = document.getElementById("recent-list");
+  section.hidden = false;
+  list.replaceChildren();
+  const lang = PP_LANG === "it" ? "it-IT" : "en-US";
+  for (const e of recentBlocked) {
+    const li = document.createElement("li");
+    const dom = document.createElement("span");
+    dom.className = "rb-domain";
+    dom.textContent = e.d;
+    const meta = document.createElement("span");
+    meta.className = "rb-meta";
+    const when = new Date(e.t).toLocaleDateString(lang, { day: "numeric", month: "short" })
+      + " " + new Date(e.t).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+    meta.textContent = t("rs_" + e.r) + " · " + when;
+    li.append(dom, meta);
+    list.appendChild(li);
+  }
+}
+
 document.getElementById("add-btn").addEventListener("click", () => {
   addDomain(inputEl.value);
   inputEl.value = "";
@@ -100,4 +124,5 @@ document.getElementById("add-current").addEventListener("click", async () => {
 /* Avvio */
 getDomains().then(render);
 showBlocked();
+showRecent();
 document.getElementById("ver").textContent = "v" + browser.runtime.getManifest().version;

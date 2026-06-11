@@ -40,10 +40,12 @@ patchpulse-extension/
 ├─ background.js        # listens to navigation and triggers the warning
 ├─ lib/
 │  ├─ match.js          # logic: homoglyphs, edit distance, punycode, green-list
+│  ├─ psl.js            # Public Suffix List (ICANN) snapshot, generated
 │  └─ i18n.js           # UI translations (automatic IT/EN)
 ├─ _locales/            # store name/description (en, it)
-├─ popup/               # popup to manage protected domains
-├─ warning/             # warning page (also shows the reason)
+├─ popup/               # popup: protected domains + recently blocked threats
+├─ warning/             # warning page (reason, letter diff, false-alarm report)
+├─ onboarding/          # welcome page shown once on install
 └─ icons/icon.svg
 ```
 
@@ -53,8 +55,9 @@ patchpulse-extension/
 - To package for the store: zip the **contents** of the folder (with `manifest.json` at the root).
 
 ## Known limitations
-- **False positives:** some legitimate sites that closely resemble an official one may get flagged. Known cases (e.g. `gitlab.com` vs `github.com`) are in a *green-list*; for the rest, the "I trust this site" button on the warning handles it. Domain extraction is simplified (it doesn't use the full Public Suffix List).
-- The Unicode confusables map is curated but not exhaustive.
+- **False positives:** some legitimate sites that closely resemble an official one may get flagged. Known cases are in a *green-list*; for the rest, the "I trust this site" button and the "report a false alarm" link on the warning handle it.
+- Domain extraction uses the full **Public Suffix List** (ICANN section, embedded locally in `lib/psl.js` — regenerate it periodically from publicsuffix.org).
+- The Unicode confusables map is a curated UTS #39 subset covering the scripts actually used in IDN attacks (Cyrillic, Greek, Armenian, extended Latin).
 - Built for Firefox (MV3 with background `scripts`); Chrome would need a `service_worker`.
 
 ## License

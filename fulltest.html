@@ -12,8 +12,10 @@ window.addEventListener("unhandledrejection", e => { document.title = "REJ: " + 
 
 /* ───────── Stub API per il BACKGROUND (caricato in questa pagina) ───────── */
 window.__updates = [];
+window.__tabsCreated = [];
 window.__onNav = null;
 window.__onMsg = null;
+window.__onInstalled = null;
 window.__storageChanged = null;
 
 function makeStorageArea(name) {
@@ -41,10 +43,14 @@ window.browser = {
   },
   runtime: {
     onMessage: { addListener(fn) { window.__onMsg = fn; } },
+    onInstalled: { addListener(fn) { window.__onInstalled = fn; } },
     getURL(p) { return "moz-extension://test/" + p; }
   },
   webNavigation: { onBeforeNavigate: { addListener(fn) { window.__onNav = fn; } } },
-  tabs: { update(id, o) { window.__updates.push({ id, url: o.url }); } }
+  tabs: {
+    update(id, o) { window.__updates.push({ id, url: o.url }); },
+    create(o) { window.__tabsCreated.push(o.url); }
+  }
 };
 
 /* Stub per le PAGINE (popup/warning) in iframe. */
@@ -77,6 +83,7 @@ window.makePageStub = function (opts) {
 };
 </script>
 
+<script src="lib/psl.js"></script>
 <script src="lib/match.js"></script>
 <script src="background.js"></script>
 <script src="lib/i18n.js"></script>
@@ -120,6 +127,17 @@ window.makePageStub = function (opts) {
     ok(registrableDomain("www.login.poste.it") === "poste.it", "registrable: sottodomini+www");
     ok(registrableDomain("deep.foo.co.uk") === "foo.co.uk", "registrable: co.uk");
     ok(registrableDomain("a.b.gov.it") === "b.gov.it", "registrable: gov.it");
+    ok(PSL_RULES.size > 5000, "PSL caricata: " + PSL_RULES.size + " regole, " + PSL_WILDCARDS.size + " wildcard, " + PSL_EXCEPTIONS.size + " eccezioni");
+    ok(registrableDomain("absa.co.za") === "absa.co.za", "PSL: absa.co.za intero (prima usciva 'co.za')");
+    ok(registrableDomain("login.absa.co.za") === "absa.co.za", "PSL: sottodominio su co.za");
+    ok(registrableDomain("foo.com.tr") === "foo.com.tr", "PSL: com.tr");
+    ok(registrableDomain("x.co.kr") === "x.co.kr", "PSL: co.kr");
+    ok(registrableDomain("y.gov.au") === "y.gov.au", "PSL: gov.au");
+    ok(registrableDomain("a.b.kawasaki.jp") === "a.b.kawasaki.jp", "PSL: wildcard *.kawasaki.jp");
+    ok(registrableDomain("foo.bar.ck") === "foo.bar.ck", "PSL: wildcard *.ck");
+    ok(registrableDomain("foo.www.ck") === "www.ck", "PSL: eccezione !www.ck");
+    ok(toAsciiSkeleton("ԛuora.com") === "quora.com", "confusabili UTS: cirillico q");
+    ok(toAsciiSkeleton("ıcloud.com") === "icloud.com", "confusabili UTS: i senza punto");
     ok(brandOf("intesa-sanpaolo.com") === "intesasanpaolo", "brandOf: trattini rimossi");
     ok(tldOf("barclays.co.uk") === "co.uk", "tldOf: multi-part");
     ok(punycodeDecode("bcher-kva") === "bücher", "punycode: bücher");
@@ -185,7 +203,13 @@ window.makePageStub = function (opts) {
       ["intesasanpaolo-conto.com","parola IT conto"],
       ["poste-spedizione.it","parola IT spedizione"],
       ["noicompriamoauto-offerte.it","parola IT offerte (finding del report)"],
-      ["poste-italiane.it","squat con trattino di posteitaliane.it"]
+      ["poste-italiane.it","squat con trattino di posteitaliane.it"],
+      ["paypa1.co.za","omoglifo del brand su TLD estero (fix PSL+brand)"],
+      ["g00gle.de","omoglifo su ccTLD (prima passava)"],
+      ["rnicrosoft.fr","rn->m su ccTLD (prima passava)"],
+      ["ԛuora.com","cirillico ԛ->q (confusabili ampliati)"],
+      ["ıcloud.com","i senza punto (confusabili ampliati)"],
+      ["gօօgle.com","armeno օ->o (confusabili ampliati)"]
     ];
     for (const [h, why] of attacks) {
       const r = findImpersonation(h);
@@ -244,7 +268,8 @@ window.makePageStub = function (opts) {
       "patchpulse.org","www.patchpulse.org","googleplay.com","play.google.com",
       "posteitaliane.it","applecare.com","microsoftrewards.com","zohomail.com",
       "playstationstore.com","vodafoneitalia.it","appletv.com","xboxlive.com",
-      "applestore.com","googledrive.com","amazonprime.com","paypal-experts.co"
+      "applestore.com","googledrive.com","amazonprime.com","paypal-experts.co",
+      "absa.co.za","google.com.tr","amazon.com.mx"
     ];
     for (const h of legit) {
       const r = findImpersonation(h);
@@ -277,6 +302,9 @@ window.makePageStub = function (opts) {
        "URL avviso contiene suspicious/official/reason/target corretti");
     let bc = (await browser.storage.local.get("blockedCount")).blockedCount || 0;
     ok(bc === 1, "contatore minacce = 1");
+    const rb1 = (await browser.storage.local.get("recentBlocked")).recentBlocked || [];
+    ok(rb1.length === 1 && rb1[0].d === "rnicrosoft.com" && rb1[0].o === "microsoft.com" && rb1[0].r === "typo" && rb1[0].t > 0,
+       "registro minacce recenti: voce completa (dominio, ufficiale, motivo, data)");
 
     await nav("https://rnicrosoft.com/login");
     ok(upd.length === 2, "senza bypass viene ribloccato");
@@ -314,6 +342,13 @@ window.makePageStub = function (opts) {
     await nav("https://paypa1.com:8443/");
     ok(upd.length === u0 + 2, "porta non standard comunque rilevata");
 
+    /* onboarding: solo alla prima installazione */
+    window.__onInstalled({ reason: "install" });
+    ok(window.__tabsCreated.length === 1 && window.__tabsCreated[0].includes("onboarding"),
+       "prima installazione -> apre la pagina di benvenuto");
+    window.__onInstalled({ reason: "update" });
+    ok(window.__tabsCreated.length === 1, "aggiornamento -> NON riapre il benvenuto");
+
     browser.storage.local._d = { officialDomains: ["mybank.it"], defaultsVersion: 1 };
     await loadDomains();
     ok(officialDomains.includes("mybank.it") && officialDomains.includes("google.com")
@@ -349,6 +384,12 @@ window.makePageStub = function (opts) {
     ok(reasonOf("mybank.tk") === "tld->mybank.it", "utente: TLD-abuse rilevato (mybank.tk)");
     ok(findImpersonation("mybank.it") === null, "utente: il dominio stesso passa pulito");
     ok(findImpersonation("login.mybank.it") === null, "utente: i suoi sottodomini passano puliti");
+    /* parita' anche su TLD multi-livello esotici (grazie alla PSL) */
+    await window.__onMsg({ type: "addOfficial", domain: "mybank.co.za" });
+    ok(officialDomains.includes("mybank.co.za"), "utente: dominio su co.za salvato intero (PSL)");
+    ok(reasonOf("mybnak.co.za") === "typo->mybank.co.za", "utente co.za: typo rilevato");
+    ok(reasonOf("mybank-login.co.za").startsWith("combo->mybank"), "utente co.za: combo rilevato");
+    ok(findImpersonation("login.mybank.co.za") === null, "utente co.za: sottodominio proprio pulito");
     /* ripristino */
     browser.storage.local._d = {};
     await loadDomains();
@@ -467,7 +508,11 @@ window.makePageStub = function (opts) {
       return { f, logs, how };
     }
 
-    const popupStorage = { officialDomains: ["google.com", "ebay.it"], blockedCount: 7 };
+    const popupStorage = {
+      officialDomains: ["google.com", "ebay.it"],
+      blockedCount: 7,
+      recentBlocked: [{ d: "evil-paypal.com", o: "paypal.com", r: "combo", t: Date.now() }]
+    };
     let { f: p1, how: howP } = await loadPopup({ lang: "en-US", storage: popupStorage, tabs: [{ url: "https://login.mybank.it/area" }] });
     ok(howP === "load", "popup: pagina caricata");
     d = p1.contentDocument;
@@ -475,6 +520,9 @@ window.makePageStub = function (opts) {
     ok(d.querySelectorAll("#domain-list li").length === 2, "popup: 2 domini renderizzati");
     ok(d.getElementById("blocked").textContent.includes("7"), "popup: contatore minacce '7' mostrato");
     ok(d.getElementById("ver").textContent === "v9.9.9-test", "popup: versione estensione mostrata");
+    ok(!d.getElementById("recent-section").hidden, "popup: sezione minacce recenti visibile");
+    ok(d.querySelector("#recent-list .rb-domain").textContent === "evil-paypal.com", "popup: minaccia recente mostrata");
+    ok(d.querySelector("#recent-list .rb-meta").textContent.length > 5, "popup: motivo+data della minaccia mostrati");
     ok(d.querySelector(".tagline").textContent.toLowerCase().includes("anti-phishing"), "popup EN: tagline tradotta");
 
     d.getElementById("domain-input").value = "https://www.Esempio.com/login";
@@ -498,6 +546,11 @@ window.makePageStub = function (opts) {
     await sleep(80);
     ok(popupStorage.officialDomains.includes("example.co.uk"), "popup: estrae example.co.uk");
 
+    d.getElementById("domain-input").value = "sub.absa.co.za";
+    d.getElementById("add-btn").click();
+    await sleep(80);
+    ok(popupStorage.officialDomains.includes("absa.co.za"), "popup: estrae absa.co.za (PSL, prima salvava 'co.za')");
+
     d.getElementById("add-current").click();
     await sleep(80);
     ok(popupStorage.officialDomains.includes("mybank.it"), "popup: 'proteggi sito attuale' -> mybank.it");
@@ -513,7 +566,52 @@ window.makePageStub = function (opts) {
     p2.contentDocument.getElementById("add-current").click();
     await sleep(80);
     ok(p2.contentDocument.getElementById("msg").className.includes("error"), "popup: nessuna scheda -> errore gestito");
+    ok(p2.contentDocument.getElementById("recent-section").hidden, "popup: senza minacce la sezione recenti resta nascosta");
     p2.remove();
+
+    /* ═════════ J. ONBOARDING (UI reale in iframe) ═════════ */
+    document.title = "sezione J";
+    out.push("\n===== J. ONBOARDING =====");
+    async function loadOnboarding(opts) {
+      const res = await fetch("/onboarding/onboarding.html");
+      let html = await res.text();
+      const { stub, logs } = window.makePageStub(opts);
+      const key = "__stub" + Math.random().toString(36).slice(2);
+      window[key] = stub;
+      html = html.replace(/<head>/i, '<head><base href="' + location.origin + '/onboarding/">');
+      html = html.replace(/<script/i, '<scr' + 'ipt>window.browser = parent["' + key + '"];</scr' + 'ipt><scr' + 'ipt');
+      const f = document.createElement("iframe");
+      f.style.cssText = "width:700px;height:700px;visibility:hidden;position:absolute";
+      document.body.appendChild(f);
+      const p = awaitLoad(f);
+      f.srcdoc = html;
+      const how = await p;
+      await sleep(100);
+      return { f, logs, how };
+    }
+
+    const obStorage = { officialDomains: ["google.com"] };
+    let { f: ob1, logs: obLogs, how: howOb } = await loadOnboarding({ lang: "en-US", storage: obStorage, tabs: [] });
+    ok(howOb === "load", "onboarding: pagina caricata");
+    const od = ob1.contentDocument;
+    ok(od.querySelector("h1").textContent.includes("Welcome"), "onboarding EN: titolo tradotto");
+    ok(od.getElementById("intro").textContent.includes("1"), "onboarding: conteggio siti protetti nel testo");
+    ok(od.getElementById("version").textContent.includes("9.9.9-test"), "onboarding: versione mostrata");
+    od.getElementById("domain-input").value = "https://www.MyBank.it/login";
+    od.getElementById("add-btn").click();
+    await sleep(100);
+    ok(obStorage.officialDomains.includes("mybank.it"), "onboarding: dominio aggiunto dal benvenuto");
+    ok(od.querySelector("#added-list li").textContent.includes("mybank.it"), "onboarding: feedback voce aggiunta");
+    od.getElementById("done").click();
+    await sleep(80);
+    ok(obLogs.removedTabs.includes(42), "onboarding: 'Fatto' chiude la scheda");
+    ob1.remove();
+
+    let { f: ob2 } = await loadOnboarding({ lang: "it-IT", storage: { officialDomains: [] }, tabs: [] });
+    ok(ob2.contentDocument.querySelector("h1").textContent.includes("Benvenuto"), "onboarding IT: titolo in italiano");
+    ok(ob2.contentDocument.getElementById("intro").textContent.includes(String(DEFAULT_DOMAINS.length)),
+       "onboarding: senza storage usa il conteggio dei default");
+    ob2.remove();
 
   } catch (e) {
     out.push("\nECCEZIONE: " + e.message + "\n" + (e.stack || ""));

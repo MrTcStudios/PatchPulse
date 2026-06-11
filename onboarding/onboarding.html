@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>PatchPulse</title>
+  <link rel="stylesheet" href="onboarding.css">
+</head>
+<body>
+  <main class="card">
+    <img src="../icons/icon.svg" alt="" class="logo">
+    <h1 data-i18n="ob_title">Benvenuto in PatchPulse!</h1>
+    <p class="lead" id="intro"></p>
+
+    <section class="box">
+      <h2 data-i18n="ob_protect_title">Proteggi i TUOI siti</h2>
+      <p data-i18n="ob_protect_desc">Aggiungi la tua banca e i servizi che usi.</p>
+      <div class="add-row">
+        <input id="domain-input" type="text" data-i18n-placeholder="inputPlaceholder" placeholder="oppure: esempio.com" autocomplete="off" spellcheck="false">
+        <button id="add-btn" data-i18n="addBtn">Aggiungi</button>
+      </div>
+      <p id="msg" class="msg"></p>
+      <ul id="added-list"></ul>
+    </section>
+
+    <section class="box">
+      <h2 data-i18n="ob_how_title">Se un sito è sospetto</h2>
+      <p data-i18n="ob_how_body">Vedrai un avviso con le lettere ingannevoli evidenziate.</p>
+    </section>
+
+    <button id="done" class="btn-primary" data-i18n="ob_done">Fatto, iniziamo!</button>
+    <p class="version" id="version"></p>
+  </main>
+
+  <script src="../lib/i18n.js"></script>
+  <script src="../lib/psl.js"></script>
+  <script src="../lib/match.js"></script>
+  <script src="onboarding.js"></script>
+</body>
+</html>

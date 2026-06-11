@@ -1,0 +1,99 @@
+:root {
+  --purple: #8b7cf8;
+  --purple-dark: #6c5ce7;
+  --bg: #1a1a1a;
+  --panel: #222;
+  --border: #2f2f2f;
+  --text: #f0ebe0;
+  --muted: #9a9a9a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: radial-gradient(1200px 600px at 50% -10%, #2a2330, #1a1a1a);
+  color: var(--text);
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 560px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 36px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+.logo { display: block; width: 56px; height: 56px; margin-bottom: 16px; }
+
+h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 10px; }
+.lead { color: var(--muted); line-height: 1.6; margin-bottom: 22px; }
+
+.box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.box h2 { font-size: 15px; font-weight: 600; margin-bottom: 6px; color: var(--purple); }
+.box p { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+.add-row { display: flex; gap: 8px; margin-top: 12px; }
+.add-row input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 14px;
+}
+.add-row input:focus { outline: none; border-color: var(--purple); }
+.add-row button {
+  border: none;
+  background: var(--purple);
+  color: #fff;
+  border-radius: 10px;
+  padding: 0 16px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+.add-row button:hover { background: var(--purple-dark); }
+
+.msg { min-height: 16px; font-size: 12px; margin-top: 8px; }
+.msg.ok { color: #7ee08a; }
+.msg.error { color: #ff6b6b; }
+
+#added-list { list-style: none; margin-top: 6px; }
+#added-list li {
+  font-size: 13px;
+  color: #7ee08a;
+  padding: 2px 0;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+.btn-primary {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--purple);
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 6px;
+}
+.btn-primary:hover { background: var(--purple-dark); }
+
+.version { margin-top: 12px; text-align: center; font-size: 11px; color: #555; }

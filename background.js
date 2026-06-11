@@ -68,14 +68,18 @@ browser.storage.onChanged.addListener((changes, area) => {
    i falsi allarmi tra nomi brevi legittimi (es. dhl.com vs dell.com). */
 function nearestOfficial(candidate) {
   const nc = normalize(candidate);
-  const cBrand = normalize(brandOf(candidate));
+  const cBrandRaw = brandOf(candidate);          // senza trattini, NON normalizzato
+  const cBrandNorm = normalize(cBrandRaw);
   const cTld = tldOf(candidate);
   for (const o of officialIndex) {
     if (nc === o.norm) return o.domain;
-    // Stesso nome, TLD diverso (amazon.de vs amazon.it): variante nazionale
-    // quasi sempre legittima -> niente confronto per distanza. I TLD davvero
-    // pericolosi (.tk, .co, .cm...) li gestisce findTldAbuse.
-    if (cBrand === o.brandNorm && cTld !== o.tld) continue;
+    // Nome identico solo DOPO la normalizzazione (paypa1, g00gle, rnicrosoft):
+    // e' un omoglifo del brand -> attacco, su QUALSIASI TLD (paypa1.co.za).
+    if (cBrandRaw !== o.brand && cBrandNorm === o.brandNorm) return o.domain;
+    // Brand davvero identico, TLD diverso (amazon.de vs amazon.it): variante
+    // nazionale quasi sempre legittima -> niente confronto per distanza.
+    // I TLD davvero pericolosi (.tk, .co, .cm...) li gestisce findTldAbuse.
+    if (cBrandRaw === o.brand && cTld !== o.tld) continue;
     const dist = levenshtein(nc, o.norm);
     const maxDist = o.norm.length <= 8 ? 1 : 2;
     if (dist >= 1 && dist <= maxDist) return o.domain;
@@ -251,10 +255,14 @@ async function addOfficial(domain) {
   await browser.storage.local.set({ officialDomains });
 }
 
-/* Contatore "minacce bloccate", mostrato nel popup. */
-async function incrementBlocked() {
-  const { blockedCount = 0 } = await browser.storage.local.get("blockedCount");
-  await browser.storage.local.set({ blockedCount: blockedCount + 1 });
+/* Registra la minaccia: contatore totale + ultime 10 (mostrate nel popup).
+   Tutto in storage locale, nessun dato lascia il browser. */
+async function recordThreat(hit) {
+  const { blockedCount = 0, recentBlocked = [] } =
+    await browser.storage.local.get(["blockedCount", "recentBlocked"]);
+  recentBlocked.unshift({ d: hit.domain, o: hit.official, r: hit.reason, t: Date.now() });
+  if (recentBlocked.length > 10) recentBlocked.length = 10;
+  await browser.storage.local.set({ blockedCount: blockedCount + 1, recentBlocked });
 }
 
 browser.runtime.onMessage.addListener((msg) => {
@@ -281,7 +289,7 @@ browser.webNavigation.onBeforeNavigate.addListener(async (details) => {
   if (!hit) return;
   if (await isBypassed(hit.domain)) return;
 
-  await incrementBlocked();
+  await recordThreat(hit);
 
   const warningUrl = browser.runtime.getURL("warning/warning.html")
     + "?suspicious=" + encodeURIComponent(hit.domain)
@@ -290,6 +298,14 @@ browser.webNavigation.onBeforeNavigate.addListener(async (details) => {
     + "&target="    + encodeURIComponent(details.url);
 
   browser.tabs.update(details.tabId, { url: warningUrl });
+});
+
+/* Alla PRIMA installazione (non agli aggiornamenti) apre la pagina di
+   benvenuto, dove l'utente puo' subito aggiungere i propri siti. */
+browser.runtime.onInstalled.addListener((details) => {
+  if (details.reason === "install") {
+    browser.tabs.create({ url: browser.runtime.getURL("onboarding/onboarding.html") });
+  }
 });
 
 loadDomains();
