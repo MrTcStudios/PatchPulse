@@ -19,7 +19,7 @@
    ============================================================ */
 
 const MAX_DOMAINS = 5000;     // tetto di sicurezza alla lista personalizzabile
-const DEFAULTS_VERSION = 3;   // alza questo numero ogni volta che amplii DEFAULT_DOMAINS
+const DEFAULTS_VERSION = 4;   // alza questo numero ogni volta che amplii DEFAULT_DOMAINS
 
 let officialDomains = [];
 let officialIndex = [];   // pre-calcolo: [{ domain, norm, labels, brand, brandNorm }]

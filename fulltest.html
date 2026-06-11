@@ -163,7 +163,12 @@ window.makePageStub = function (opts) {
       ["steamcommunlty.com","squat steam i->l"],
       ["fortnite-login.com","combo su nuovo dominio"],
       ["minecraft-account-verify.com","combo multi-token nuovo dominio"],
-      ["hotrnail.com","rn->m hotmail"]
+      ["hotrnail.com","rn->m hotmail"],
+      ["postepay-login.com","combo su postepay (finding del report)"],
+      ["googlepay-support.com","combo su googlepay"],
+      ["amazonpay-verify.com","combo su amazonpay"],
+      ["googleplay-verify.com","combo su googleplay"],
+      ["postepay.tk","postepay su TLD sospetto"]
     ];
     for (const [h, why] of attacks) {
       const r = findImpersonation(h);
@@ -219,7 +224,7 @@ window.makePageStub = function (opts) {
       "hotmail.com","minecraft.net","mojang.com","fortnite.com","steamcommunity.com",
       "noicompriamoauto.it","example.com","photopea.com",
       "minecraft.com","hotmail.it","fortnine.com",
-      "patchpulse.org","www.patchpulse.org"
+      "patchpulse.org","www.patchpulse.org","googleplay.com","play.google.com"
     ];
     for (const h of legit) {
       const r = findImpersonation(h);
@@ -302,6 +307,29 @@ window.makePageStub = function (opts) {
     await window.__onMsg({ type: "addOfficial", domain: "extra.com" });
     ok(officialDomains.length === 5000, "tetto 5000: aggiunta oltre il limite rifiutata");
 
+    browser.storage.local._d = {};
+    await loadDomains();
+
+    /* ═════════ I. PARITÀ DOMINI UTENTE = DOMINI DI SERIE ═════════
+       Un dominio aggiunto dall'utente (qui col VERO flusso addOfficial, lo
+       stesso del pulsante "Mi fido") deve ricevere TUTTI i tipi di
+       protezione, con gli stessi motivi dei domini predefiniti. */
+    document.title = "sezione I";
+    out.push("\n===== I. PARITA' DOMINI UTENTE =====");
+    await window.__onMsg({ type: "addOfficial", domain: "mybank.it" });
+    ok(officialDomains.includes("mybank.it"), "utente aggiunge mybank.it (flusso reale)");
+
+    function reasonOf(h) { const r = findImpersonation(h); return r ? r.reason + "->" + r.official : "nessuno"; }
+    ok(reasonOf("mybnak.it") === "typo->mybank.it", "utente: typo/swap rilevato (mybnak.it)");
+    ok(reasonOf("my-bank.it") === "typo->mybank.it", "utente: trucco trattino rilevato (my-bank.it)");
+    ok(reasonOf("mybank-login.it") === "combo->mybank.it", "utente: combo-squatting rilevato (mybank-login.it)");
+    ok(reasonOf("loginmybank.it") === "combo->mybank.it", "utente: combo attaccato rilevato (loginmybank.it)");
+    ok(reasonOf("mybank.it.evil.ru") === "sottodominio->mybank.it", "utente: dominio incastonato rilevato");
+    ok(reasonOf("mybank.secure-verify.ru") === "sottodominio->mybank.it", "utente: brand nel sottodominio rilevato");
+    ok(reasonOf("mybank.tk") === "tld->mybank.it", "utente: TLD-abuse rilevato (mybank.tk)");
+    ok(findImpersonation("mybank.it") === null, "utente: il dominio stesso passa pulito");
+    ok(findImpersonation("login.mybank.it") === null, "utente: i suoi sottodomini passano puliti");
+    /* ripristino */
     browser.storage.local._d = {};
     await loadDomains();
 
