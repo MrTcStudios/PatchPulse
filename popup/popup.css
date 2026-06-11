@@ -121,3 +121,4 @@ footer::before {
   background: #7ee08a;
 }
 .blocked { margin-left: auto; color: var(--muted); }
+.ver { margin-left: 8px; color: #555; }

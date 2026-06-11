@@ -100,3 +100,4 @@ document.getElementById("add-current").addEventListener("click", async () => {
 /* Avvio */
 getDomains().then(render);
 showBlocked();
+document.getElementById("ver").textContent = "v" + browser.runtime.getManifest().version;

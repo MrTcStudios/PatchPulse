@@ -63,7 +63,10 @@ window.makePageStub = function (opts) {
         async set(obj) { Object.assign(opts.storage, obj); }
       }
     },
-    runtime: { async sendMessage(msg) { logs.messages.push(msg); return { ok: true }; } },
+    runtime: {
+      async sendMessage(msg) { logs.messages.push(msg); return { ok: true }; },
+      getManifest() { return { version: "9.9.9-test" }; }
+    },
     tabs: {
       async query() { logs.queries++; return opts.tabs || []; },
       async getCurrent() { return { id: 42 }; },
@@ -168,7 +171,21 @@ window.makePageStub = function (opts) {
       ["googlepay-support.com","combo su googlepay"],
       ["amazonpay-verify.com","combo su amazonpay"],
       ["googleplay-verify.com","combo su googleplay"],
-      ["postepay.tk","postepay su TLD sospetto"]
+      ["postepay.tk","postepay su TLD sospetto"],
+      ["minecraft-premium.tk","parola premium"],
+      ["fortnite-skins.tk","SOLO brand-token su TLD spazzatura (nuova regola)"],
+      ["fortnite-vbucks-free.com","parola free"],
+      ["netflix-premium.xyz","premium su TLD"],
+      ["dhl-tracking.com","smishing tracking"],
+      ["amazon-refund.com","parola refund"],
+      ["roblox-gift.com","parola gift"],
+      ["steamcommunity-giftcard.com","parola giftcard"],
+      ["binance-airdrop.com","crypto airdrop"],
+      ["paypal-rimborso.com","parola IT rimborso"],
+      ["intesasanpaolo-conto.com","parola IT conto"],
+      ["poste-spedizione.it","parola IT spedizione"],
+      ["noicompriamoauto-offerte.it","parola IT offerte (finding del report)"],
+      ["poste-italiane.it","squat con trattino di posteitaliane.it"]
     ];
     for (const [h, why] of attacks) {
       const r = findImpersonation(h);
@@ -224,7 +241,10 @@ window.makePageStub = function (opts) {
       "hotmail.com","minecraft.net","mojang.com","fortnite.com","steamcommunity.com",
       "noicompriamoauto.it","example.com","photopea.com",
       "minecraft.com","hotmail.it","fortnine.com",
-      "patchpulse.org","www.patchpulse.org","googleplay.com","play.google.com"
+      "patchpulse.org","www.patchpulse.org","googleplay.com","play.google.com",
+      "posteitaliane.it","applecare.com","microsoftrewards.com","zohomail.com",
+      "playstationstore.com","vodafoneitalia.it","appletv.com","xboxlive.com",
+      "applestore.com","googledrive.com","amazonprime.com","paypal-experts.co"
     ];
     for (const h of legit) {
       const r = findImpersonation(h);
@@ -346,16 +366,28 @@ window.makePageStub = function (opts) {
     /* ═════════ G. PAGINA DI AVVISO (iframe con URL reale + query) ═════════ */
     document.title = "sezione G";
     out.push("\n===== G. PAGINA DI AVVISO =====");
+    /* Carica la VERA warning.html in iframe srcdoc con lo stub gia' presente
+       PRIMA degli script (warning.js usa browser.* al load per la versione).
+       srcdoc non ha query string: lo stub patcha URLSearchParams cosi' che la
+       search vuota dell'iframe restituisca la query del test. */
     async function loadWarning(query, opts) {
+      const res = await fetch("/warning/warning.html");
+      let html = await res.text();
       const { stub, logs } = window.makePageStub(opts);
+      const key = "__stub" + Math.random().toString(36).slice(2);
+      window[key] = stub;
+      const inject = 'window.browser = parent["' + key + '"];'
+        + '(function(){var R = window.URLSearchParams; var Q = ' + JSON.stringify(query) + ';'
+        + 'window.URLSearchParams = function(i){ return new R((i === "" || i == null) ? Q : i); };})();';
+      html = html.replace(/<head>/i, '<head><base href="' + location.origin + '/warning/">');
+      html = html.replace(/<script/i, '<scr' + 'ipt>' + inject + '</scr' + 'ipt><scr' + 'ipt');
       const f = document.createElement("iframe");
       f.style.cssText = "width:700px;height:520px;visibility:hidden;position:absolute";
       document.body.appendChild(f);
       const p = awaitLoad(f);
-      f.src = "/warning/warning.html" + query;
+      f.srcdoc = html;
       const how = await p;
-      f.contentWindow.browser = stub;       // per i click handler (sendMessage/tabs)
-      await sleep(60);
+      await sleep(80);
       return { f, logs, how };
     }
     const target = location.origin + "/icons/icon.svg";
@@ -369,6 +401,13 @@ window.makePageStub = function (opts) {
     ok(d.getElementById("official").textContent === "microsoft.com", "warning: dominio ufficiale mostrato");
     ok(d.getElementById("reason").textContent.length > 5, "warning: motivo (typo) mostrato");
     ok(d.getElementById("trust").textContent.includes("rnicrosoft.com"), "warning: bottone 'mi fido' con dominio");
+    const diffEl = d.querySelector("#suspicious .diff");
+    ok(d.getElementById("suspicious").textContent === "rnicrosoft.com" && diffEl && diffEl.textContent === "rn",
+       "warning: lettere ingannevoli evidenziate ('rn' marcato, testo completo intatto)");
+    ok(d.getElementById("version").textContent.includes("9.9.9-test"), "warning: versione estensione mostrata");
+    const rl = d.getElementById("report");
+    ok(rl.href.startsWith("mailto:support@patchpulse.org") && rl.href.includes("rnicrosoft.com"),
+       "warning: link segnalazione falso allarme (mailto precompilato col dominio)");
     const nav1 = awaitLoad(w1);
     d.getElementById("proceed").click();
     ok((await nav1) === "load", "warning: 'vai comunque' naviga davvero");
@@ -389,7 +428,7 @@ window.makePageStub = function (opts) {
     w3.contentDocument.getElementById("proceed").click();
     await sleep(250);
     ok(l3.messages.length === 0, "warning: target javascript: -> nessun messaggio");
-    ok(w3.contentWindow.location.href.includes("/warning/warning.html"), "warning: target javascript: -> nessuna navigazione");
+    ok(w3.contentWindow.location.href.startsWith("about:"), "warning: target javascript: -> nessuna navigazione");
     w3.remove();
 
     /* anche data: e percorsi relativi devono essere rifiutati */
@@ -397,7 +436,7 @@ window.makePageStub = function (opts) {
     let { f: w4, logs: l4 } = await loadWarning(evil2, { lang: "en-US", storage: {} });
     w4.contentDocument.getElementById("proceed").click();
     await sleep(250);
-    ok(l4.messages.length === 0 && w4.contentWindow.location.href.includes("/warning/"), "warning: target data: rifiutato");
+    ok(l4.messages.length === 0 && w4.contentWindow.location.href.startsWith("about:"), "warning: target data: rifiutato");
     w4.remove();
 
     for (const reason of ["omografi", "sottodominio", "combo", "tld"]) {
@@ -435,6 +474,7 @@ window.makePageStub = function (opts) {
     ok(d.getElementById("count").textContent === "2", "popup: contatore lista = 2");
     ok(d.querySelectorAll("#domain-list li").length === 2, "popup: 2 domini renderizzati");
     ok(d.getElementById("blocked").textContent.includes("7"), "popup: contatore minacce '7' mostrato");
+    ok(d.getElementById("ver").textContent === "v9.9.9-test", "popup: versione estensione mostrata");
     ok(d.querySelector(".tagline").textContent.toLowerCase().includes("anti-phishing"), "popup EN: tagline tradotta");
 
     d.getElementById("domain-input").value = "https://www.Esempio.com/login";

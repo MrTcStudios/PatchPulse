@@ -19,7 +19,7 @@
    ============================================================ */
 
 const MAX_DOMAINS = 5000;     // tetto di sicurezza alla lista personalizzabile
-const DEFAULTS_VERSION = 4;   // alza questo numero ogni volta che amplii DEFAULT_DOMAINS
+const DEFAULTS_VERSION = 5;   // alza questo numero ogni volta che amplii DEFAULT_DOMAINS
 
 let officialDomains = [];
 let officialIndex = [];   // pre-calcolo: [{ domain, norm, labels, brand, brandNorm }]
@@ -158,15 +158,27 @@ function findComboSquat(registrable) {
   return null;
 }
 
-/* ── 6) Abuso di TLD: il nome del brand, esatto (dopo normalizzazione),
-   su un TLD economico/sospetto: "paypal.tk", "g00gle.xyz". */
+/* ── 6) Abuso di TLD: il nome del brand su un TLD economico/sospetto.
+   Due forme: brand esatto ("paypal.tk", "g00gle.xyz") e brand come token
+   separato da trattini ("minecraft-premium.tk", "fortnite-skins.tk").
+   La forma a token NON si applica a .co/.cm/.om (typo di .com ma usati anche
+   da siti legittimi, es. agenzie "brand-experts.co"): li' serve il brand esatto. */
+const TLD_TOKEN_EXEMPT = new Set(["co", "cm", "om"]);
+
 function findTldAbuse(registrable) {
-  if (!SUSPICIOUS_TLDS.has(tldOf(registrable))) return null;
-  const nb = normalize(brandOf(registrable));
+  const tld = tldOf(registrable);
+  if (!SUSPICIOUS_TLDS.has(tld)) return null;
+  const sld = registrable.split(".")[0];
+  const nb = normalize(sld);
   if (nb.length < 3) return null;
+  const tokens = TLD_TOKEN_EXEMPT.has(tld) ? [] : sld.split("-").filter(Boolean);
   for (const o of officialIndex) {
     if (BRAND_EXCLUDED.has(o.brand)) continue;
-    if (nb === o.brandNorm && o.domain !== registrable) return o.domain;
+    if (o.domain === registrable) continue;
+    if (nb === o.brandNorm) return o.domain;
+    for (const tk of tokens) {
+      if (tk.length >= 3 && normalize(tk) === o.brandNorm) return o.domain;
+    }
   }
   return null;
 }
