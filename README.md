@@ -7,16 +7,18 @@ Unlike blocklists (which only know sites that have already been reported), Patch
 Part of the [PatchPulse](https://patchpulse.org) project.
 
 ## What it catches
-- **Typos / ASCII homoglyphs** — `rnicrosoft.com` (rn→m), `paypa1.com` (1→l), `gogle.com`, swapped letters (`googel.com`)
+- **Typos / ASCII homoglyphs** — `rnicrosoft.com` (rn→m), `paypa1.com` (1→l), `gogle.com`, swapped letters (`googel.com`) — on any domain ending (`paypa1.co.za`, `g00gle.de`)
 - **Hyphen tricks** — `pay-pal.com`, `paypal.com-secure.ru`
-- **Unicode / IDN homographs** — Cyrillic or Greek letters that imitate Latin ones, with `xn--` punycode decoding
+- **Unicode / IDN homographs** — Cyrillic, Greek, Armenian and extended-Latin letters that imitate Latin ones (curated UTS #39 subset, with `xn--` punycode decoding): `аpple.com`, `ıcloud.com`
 - **An official domain used as a sub-domain** of another — `paypal.com.evil-login.ru`, `paypal.com.tk`
 - **Brand as sub-domain with phishing words** — `paypal.secure-verify.ru`
-- **Combo-squatting** — `paypal-login.com`, `applesupport.com`, `secure-paypal.com`
-- **TLD abuse** — the exact brand name on an abuse-prone TLD: `paypal.tk`, `microsoft.top`
+- **Combo-squatting** — the brand plus phishing words in English and Italian (~140 words): `paypal-login.com`, `applesupport.com`, `amazon-verifica.com`, `dhl-tracking.com`
+- **TLD abuse** — the brand name, exact or as a hyphen token, on an abuse-prone TLD: `paypal.tk`, `paypal.co`, `fortnite-skins.tk`
+
+Domains are resolved with the full **Public Suffix List**, so all of the above works on multi-level endings (`.co.za`, `.com.tr`, `.co.uk`...) — both for the 173 built-in domains and for the ones you add yourself, which get the exact same protection.
 
 ## Installation
-**Firefox** — *coming soon on addons.mozilla.org (link will be added once published).*
+**Firefox** — <https://addons.mozilla.org/firefox/addon/patchpulse-anti-phishing/>
 
 **From source (for development):**
 1. open `about:debugging#/runtime/this-firefox`
@@ -27,11 +29,13 @@ To see the warning, type a look-alike of a default domain in the address bar, e.
 
 ## How it works
 1. It runs in the background on every site you open.
-2. If the address is a look-alike, it shows a warning comparing the fake domain with the official one and explaining why.
-3. You decide: **go back**, **continue anyway** (for this session only), or **add it to your protected list** if you trust it.
+2. If the address is a look-alike, it shows a warning comparing the fake domain with the official one, **highlighting the deceptive letters** and explaining why.
+3. You decide: **go back**, **continue anyway** (for this session only), or **add it to your protected list** if you trust it. False alarms can be reported with one click — it opens a pre-filled email, nothing is ever sent automatically.
+
+A welcome page on first install lets you add your own sites right away, and the popup shows your protected domains plus the **latest blocked threats** (with reason and date) and the extension version.
 
 ## Privacy
-No data collected or transmitted. All comparison happens on your device; the list of protected domains and the blocked-threats counter stay in the browser's local storage.
+No data collected or transmitted; the extension makes no network requests. All comparison happens on your device; the protected-domains list and the locally stored blocked-threats history never leave the browser.
 
 ## Structure
 ```
