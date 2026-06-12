@@ -5,15 +5,17 @@
    a una pagina di avviso PRIMA che il sito sospetto venga caricato.
 
    Controlli, in ordine:
-     1. typo/omoglifi ASCII e trattini (distanza di Damerau-Levenshtein)
-     2. omografi Unicode/IDN (cirillico/greco, punycode xn--)
+     1. typo/omoglifi ASCII e trattini (distanza di Damerau-Levenshtein),
+        su qualsiasi TLD se il nome e' un omoglifo del brand
+     2. omografi Unicode/IDN (cirillico/greco/armeno, punycode xn--)
      3. dominio ufficiale incastonato nei sottodomini (paypal.com.evil.ru),
-        anche camuffato con trattini (paypal.com-secure.ru) o su TLD
-        sospetto (paypal.com.tk)
+        anche con trattini (paypal.com-secure.ru) o su TLD sospetto
      4. nome del brand come sottodominio + parola sospetta (paypal.verify-x.ru)
-     5. combo-squatting: brand + parola sospetta (paypal-login.com,
-        applesupport.com)
-     6. abuso di TLD: brand esatto su TLD economico/sospetto (paypal.tk)
+     4b. brand su piattaforma di hosting gratuito (secure-paypal.vercel.app)
+     5. combo-squatting: brand + parola sospetta, anche con omoglifi
+        (paypal-login.com, paypa1-login.com)
+     6. abuso di TLD: brand esatto o con un typo su TLD spazzatura (paypal.tk)
+     7. etichetta a script misti latino+non-latino (omografo generico)
 
    Funzioni e liste arrivano da lib/match.js.
    ============================================================ */
@@ -68,6 +70,10 @@ browser.storage.onChanged.addListener((changes, area) => {
    i falsi allarmi tra nomi brevi legittimi (es. dhl.com vs dell.com). */
 function nearestOfficial(candidate) {
   const nc = normalize(candidate);
+  // Domini con lettere non-ASCII (accentate: mañana, café, müller) sono IDN
+  // legittimi: NON li confrontiamo per distanza con brand ASCII (eviterebbe
+  // mañana.com -> asana.com). Gli attacchi IDN passano via skeleton/script-misti.
+  if (/[^\x00-\x7f]/.test(nc)) return null;
   const cBrandRaw = brandOf(candidate);          // senza trattini, NON normalizzato
   const cBrandNorm = normalize(cBrandRaw);
   const cTld = tldOf(candidate);
@@ -136,27 +142,55 @@ function findBrandSubdomain(hostname, registrable) {
 
 /* ── 5) Combo-squatting: il nome del brand combinato con parole tipiche del
    phishing, con trattino ("paypal-login.com", "secure-paypal.com") o
-   attaccato ("applesupport.com", "loginpaypal.com"). */
+   attaccato ("applesupport.com", "loginpaypal.com").
+   I token sono NORMALIZZATI prima del confronto, cosi' becca anche il brand
+   camuffato con omoglifi ("paypa1-login.com", "g00gle-support.com"): resta
+   comunque richiesta una parola sospetta, quindi niente nuovi falsi positivi. */
 function findComboSquat(registrable) {
   const sld = registrable.split(".")[0];
-  const tokens = sld.split("-").filter(Boolean);
+  const tokens = sld.split("-").map(normalize).filter(Boolean);
+  const words = tokens.filter((tk) => SUSPICIOUS_WORDS.has(tk));
   const flat = tokens.join("");
   for (const o of officialIndex) {
-    const b = o.brand;
-    if (b.length < 3 || BRAND_EXCLUDED.has(b)) continue;
+    const b = o.brandNorm;
+    if (b.length < 3 || BRAND_EXCLUDED.has(o.brand)) continue;
     if (o.domain === registrable) continue;
 
+    // Forma con trattini: un token E' il brand e un ALTRO token e' parola sospetta.
     if (tokens.length > 1 && tokens.includes(b) &&
-        tokens.some((tk) => tk !== b && SUSPICIOUS_WORDS.has(tk))) {
+        words.some((w) => w !== b)) {
       return o.domain;
     }
-    if (flat !== b && flat.length > b.length) {
-      // CONCAT_EXCLUDED: "brand+pay" attaccato e' quasi sempre un prodotto
-      // reale del brand (postepay, googlepay...), non un attacco.
+    // Forma attaccata: brand+parola o parola+brand (senza trattini).
+    // CONCAT_EXCLUDED: "brand+pay" e' quasi sempre un prodotto reale del brand
+    // (postepay, googlepay...), non un attacco.
+    if (tokens.length === 1 && flat !== b && flat.length > b.length) {
       const suffix = flat.slice(b.length);
       if (flat.startsWith(b) && SUSPICIOUS_WORDS.has(suffix) && !CONCAT_EXCLUDED.has(suffix)) return o.domain;
       const prefix = flat.slice(0, flat.length - b.length);
       if (flat.endsWith(b) && SUSPICIOUS_WORDS.has(prefix) && !CONCAT_EXCLUDED.has(prefix)) return o.domain;
+    }
+  }
+  return null;
+}
+
+/* ── 5b) Brand su piattaforma di hosting gratuito ("secure-paypal.vercel.app",
+   "paypa1.github.io"). Gating anti-falso-positivo FORTE: un'azienda vera puo'
+   avere "microsoft.github.io", quindi segnaliamo SOLO se l'etichetta e' un
+   OMOGLIFO del brand (non il brand esatto) oppure se compare insieme a una
+   parola sospetta. Il brand esatto da solo NON basta. */
+function findHostedBrand(hostname, registrable) {
+  if (!HOSTING_PLATFORMS.has(registrable)) return null;
+  if (hostname.length <= registrable.length) return null;
+  const sub = hostname.slice(0, hostname.length - registrable.length - 1);
+  const rawTokens = sub.split(/[.-]/).filter(Boolean);
+  const hasSuspicious = rawTokens.some((tk) => SUSPICIOUS_WORDS.has(normalize(tk)));
+  for (const o of officialIndex) {
+    if (o.brandNorm.length < 3 || BRAND_EXCLUDED.has(o.brand)) continue;
+    for (const tk of rawTokens) {
+      if (normalize(tk) !== o.brandNorm) continue;
+      if (tk !== o.brand) return o.domain;   // omoglifo/typo del brand -> sicuro
+      if (hasSuspicious) return o.domain;     // brand esatto + parola sospetta
     }
   }
   return null;
@@ -175,11 +209,16 @@ function findTldAbuse(registrable) {
   const sld = registrable.split(".")[0];
   const nb = normalize(sld);
   if (nb.length < 3) return null;
-  const tokens = TLD_TOKEN_EXEMPT.has(tld) ? [] : sld.split("-").filter(Boolean);
+  // Sui TLD-spazzatura veri (non .co/.cm/.om, usati anche legittimamente)
+  // accettiamo anche il brand a 1 modifica di distanza: li' un typo del brand
+  // e' quasi sempre malevolo (es. "amazoon.tk", "netfllx.top").
+  const fuzzy = !TLD_TOKEN_EXEMPT.has(tld);
+  const tokens = fuzzy ? sld.split("-").filter(Boolean) : [];
   for (const o of officialIndex) {
     if (BRAND_EXCLUDED.has(o.brand)) continue;
     if (o.domain === registrable) continue;
     if (nb === o.brandNorm) return o.domain;
+    if (fuzzy && o.brandNorm.length >= 5 && levenshtein(nb, o.brandNorm) === 1) return o.domain;
     for (const tk of tokens) {
       if (tk.length >= 3 && normalize(tk) === o.brandNorm) return o.domain;
     }
@@ -200,8 +239,10 @@ function findImpersonation(hostname) {
   let official = nearestOfficial(rawDomain);
   if (official) return { domain: rawDomain, official, reason: "typo" };
 
+  const isIdn = /xn--/.test(hostname) || /[^\x00-\x7f]/.test(hostname);
+
   // 2) Omografo Unicode/IDN (cirillico, greco, punycode).
-  if (/xn--/.test(hostname) || /[^\x00-\x7f]/.test(hostname)) {
+  if (isIdn) {
     const skel = registrableDomain(toAsciiSkeleton(hostname));
     if (skel !== rawDomain) {
       official = nearestOfficial(skel);
@@ -220,13 +261,24 @@ function findImpersonation(hostname) {
   official = findBrandSubdomain(hostname, rawDomain);
   if (official) return { domain: rawDomain, official, reason: "sottodominio" };
 
+  // 4b) Brand su piattaforma di hosting gratuito (secure-paypal.vercel.app).
+  official = findHostedBrand(hostname, rawDomain);
+  if (official) return { domain: rawDomain, official, reason: "hosting" };
+
   // 5) Combo-squatting (brand + parola sospetta).
   official = findComboSquat(rawDomain);
   if (official) return { domain: rawDomain, official, reason: "combo" };
 
-  // 6) Brand esatto su TLD sospetto.
+  // 6) Brand esatto (o typo) su TLD sospetto.
   official = findTldAbuse(rawDomain);
   if (official) return { domain: rawDomain, official, reason: "tld" };
+
+  // 7) Etichetta a script misti (latino + cirillico/greco/armeno): omografo
+  //    malevolo a prescindere dal brand. Ultimo, cosi' i casi noti mantengono
+  //    il motivo piu' specifico.
+  if (isIdn && hasMixedScript(hostname)) {
+    return { domain: rawDomain, official: rawDomain, reason: "scriptmisti" };
+  }
 
   return null;
 }
@@ -275,8 +327,13 @@ browser.runtime.onMessage.addListener((msg) => {
   }
 });
 
-/* Intercetta la navigazione PRIMA che la pagina venga caricata. */
-browser.webNavigation.onBeforeNavigate.addListener(async (details) => {
+/* Dedup tra onBeforeNavigate e onCommitted: evita doppio conteggio/redirect
+   sullo stesso (tab, url) a breve distanza. In memoria: se l'event page si
+   spegne perdiamo la cache, ma isBypassed copre comunque i casi di confine. */
+const handledRecently = new Map();
+
+/* Logica unica condivisa dai due listener di navigazione. */
+async function handleNavigation(details) {
   if (details.frameId !== 0) return;
 
   let url;
@@ -284,6 +341,11 @@ browser.webNavigation.onBeforeNavigate.addListener(async (details) => {
   if (url.protocol !== "http:" && url.protocol !== "https:") return;
   if (!url.hostname.includes(".")) return;
   if (/^[\d.]+$/.test(url.hostname)) return;
+
+  const prev = handledRecently.get(details.tabId);
+  if (prev && prev.url === details.url && Date.now() - prev.ts < 4000) return;
+  if (handledRecently.size > 200) handledRecently.clear();
+  handledRecently.set(details.tabId, { url: details.url, ts: Date.now() });
 
   const hit = findImpersonation(url.hostname);
   if (!hit) return;
@@ -298,7 +360,13 @@ browser.webNavigation.onBeforeNavigate.addListener(async (details) => {
     + "&target="    + encodeURIComponent(details.url);
 
   browser.tabs.update(details.tabId, { url: warningUrl });
-});
+}
+
+/* onBeforeNavigate: blocca PRIMA del caricamento (caso normale).
+   onCommitted: rete di sicurezza per i redirect lato server (30x) che possono
+   non rilanciare onBeforeNavigate sull'hop finale. */
+browser.webNavigation.onBeforeNavigate.addListener(handleNavigation);
+browser.webNavigation.onCommitted.addListener(handleNavigation);
 
 /* Alla PRIMA installazione (non agli aggiornamenti) apre la pagina di
    benvenuto, dove l'utente puo' subito aggiungere i propri siti. */

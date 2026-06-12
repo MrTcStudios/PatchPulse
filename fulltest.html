@@ -14,6 +14,7 @@ window.addEventListener("unhandledrejection", e => { document.title = "REJ: " + 
 window.__updates = [];
 window.__tabsCreated = [];
 window.__onNav = null;
+window.__onCommitted = null;
 window.__onMsg = null;
 window.__onInstalled = null;
 window.__storageChanged = null;
@@ -46,7 +47,10 @@ window.browser = {
     onInstalled: { addListener(fn) { window.__onInstalled = fn; } },
     getURL(p) { return "moz-extension://test/" + p; }
   },
-  webNavigation: { onBeforeNavigate: { addListener(fn) { window.__onNav = fn; } } },
+  webNavigation: {
+    onBeforeNavigate: { addListener(fn) { window.__onNav = fn; } },
+    onCommitted: { addListener(fn) { window.__onCommitted = fn; } }
+  },
   tabs: {
     update(id, o) { window.__updates.push({ id, url: o.url }); },
     create(o) { window.__tabsCreated.push(o.url); }
@@ -138,6 +142,12 @@ window.makePageStub = function (opts) {
     ok(registrableDomain("foo.www.ck") === "www.ck", "PSL: eccezione !www.ck");
     ok(toAsciiSkeleton("ԛuora.com") === "quora.com", "confusabili UTS: cirillico q");
     ok(toAsciiSkeleton("ıcloud.com") === "icloud.com", "confusabili UTS: i senza punto");
+    ok(hasMixedScript("pаypаl.com") === true, "mixed-script: latino+cirillico = true");
+    ok(hasMixedScript("paypal.com") === false, "mixed-script: solo latino = false");
+    ok(hasMixedScript("café.fr") === false, "mixed-script: latino accentato NON è misto");
+    ok(hasMixedScript("xn--80ak6aa92e.com") === false, "mixed-script: punycode tutto-cirillico = false");
+    ok(registrableDomain("secure-paypal.vercel.app") === "vercel.app", "hosting: registrable = piattaforma (vercel.app)");
+    ok(registrableDomain("paypa1.github.io") === "github.io", "hosting: registrable = github.io");
     ok(brandOf("intesa-sanpaolo.com") === "intesasanpaolo", "brandOf: trattini rimossi");
     ok(tldOf("barclays.co.uk") === "co.uk", "tldOf: multi-part");
     ok(punycodeDecode("bcher-kva") === "bücher", "punycode: bücher");
@@ -209,7 +219,28 @@ window.makePageStub = function (opts) {
       ["rnicrosoft.fr","rn->m su ccTLD (prima passava)"],
       ["ԛuora.com","cirillico ԛ->q (confusabili ampliati)"],
       ["ıcloud.com","i senza punto (confusabili ampliati)"],
-      ["gօօgle.com","armeno օ->o (confusabili ampliati)"]
+      ["gօօgle.com","armeno օ->o (confusabili ampliati)"],
+      // #1 combo con brand-omoglifo (era un MISS)
+      ["paypa1-login.com","combo con omoglifo del brand (fix bug)"],
+      ["g00gle-support.com","combo con omoglifo del brand"],
+      ["rnicrosoft-verify.com","combo con omoglifo del brand"],
+      ["paypa1login.com","combo attaccato con omoglifo"],
+      // #2 brand su hosting gratuito
+      ["paypa1.github.io","omoglifo brand su github.io"],
+      ["secure-paypal.vercel.app","brand+parola su vercel.app"],
+      ["paypal-login.weebly.com","brand+parola su weebly"],
+      ["rnicrosoft.netlify.app","omoglifo brand su netlify"],
+      ["microsoft-verify.glitch.me","brand+parola su glitch"],
+      ["g00gle.pages.dev","omoglifo brand su pages.dev"],
+      // #3a typo del brand su TLD spazzatura
+      ["amazoon.tk","typo brand su TLD spazzatura"],
+      ["netfllx.top","typo brand su TLD abuso"],
+      ["arnazon.xyz","omoglifo+typo su xyz"],
+      // #5 script misti (anche su brand NON in lista)
+      ["pаypаl.com","latino+cirillico misti (а)"],
+      ["bаnca-intеsа.com","brand non in lista, script misti"],
+      ["lоginseсure.net","script misti senza brand noto"],
+      ["xn--80ak6aa92e.com","аррӏе cirillico completo (omografo)"]
     ];
     for (const [h, why] of attacks) {
       const r = findImpersonation(h);
@@ -269,7 +300,15 @@ window.makePageStub = function (opts) {
       "posteitaliane.it","applecare.com","microsoftrewards.com","zohomail.com",
       "playstationstore.com","vodafoneitalia.it","appletv.com","xboxlive.com",
       "applestore.com","googledrive.com","amazonprime.com","paypal-experts.co",
-      "absa.co.za","google.com.tr","amazon.com.mx"
+      "absa.co.za","google.com.tr","amazon.com.mx",
+      // hosting: pagine ufficiali su piattaforme dev (brand esatto, no parola) -> NON segnalare
+      "microsoft.github.io","google.github.io","facebook.github.io","apple.github.io",
+      "vuejs.github.io","cloudflare.workers.dev","mywebsite.vercel.app","johndoe.github.io",
+      "company-blog.weebly.com","mio-sito.netlify.app",
+      // script misti: domini mono-alfabeto / IDN latino legittimi -> NON segnalare
+      "xn--d1acufc.xn--p1ai","mañana.com","café.fr","müller.de","façade.com","købn.dk",
+      // typo su TLD spazzatura: brand corti / parole comuni su quei TLD -> niente FP da dist-1
+      "info.tk","blog.xyz","news.top","my-app.pages.dev"
     ];
     for (const h of legit) {
       const r = findImpersonation(h);
@@ -306,18 +345,20 @@ window.makePageStub = function (opts) {
     ok(rb1.length === 1 && rb1[0].d === "rnicrosoft.com" && rb1[0].o === "microsoft.com" && rb1[0].r === "typo" && rb1[0].t > 0,
        "registro minacce recenti: voce completa (dominio, ufficiale, motivo, data)");
 
-    await nav("https://rnicrosoft.com/login");
-    ok(upd.length === 2, "senza bypass viene ribloccato");
+    // URL/path distinti per ogni navigazione "logica": il dedup sopprime solo
+    // la coppia onBefore+onCommitted dello STESSO (tab,url), non navigazioni nuove.
+    await nav("https://rnicrosoft.com/login-2");
+    ok(upd.length === 2, "senza bypass viene ribloccato (nuova navigazione)");
 
     await window.__onMsg({ type: "proceed", domain: "rnicrosoft.com" });
-    await nav("https://rnicrosoft.com/login");
+    await nav("https://rnicrosoft.com/login-3");
     ok(upd.length === 2, "dopo 'vai comunque' NON viene ribloccato (bypass sessione)");
 
-    await nav("https://gogle.com/");
+    await nav("https://gogle.com/a");
     ok(upd.length === 3, "gogle.com bloccato prima del 'mi fido'");
     await window.__onMsg({ type: "addOfficial", domain: "gogle.com" });
     ok(officialDomains.includes("gogle.com"), "addOfficial: dominio aggiunto ai protetti");
-    await nav("https://gogle.com/");
+    await nav("https://gogle.com/b");
     ok(upd.length === 3, "dopo 'mi fido' non viene piu' bloccato");
 
     const lenBefore = officialDomains.length;
@@ -341,6 +382,20 @@ window.makePageStub = function (opts) {
     ok(upd.length === u0 + 1, "punto finale (googel.com.) comunque rilevato");
     await nav("https://paypa1.com:8443/");
     ok(upd.length === u0 + 2, "porta non standard comunque rilevata");
+
+    /* onCommitted come rete di sicurezza + dedup (non raddoppia con onBeforeNavigate) */
+    const onCommitted = window.__onCommitted;
+    ok(typeof onCommitted === "function", "onCommitted: listener registrato");
+    const u1 = upd.length;
+    await onCommitted({ frameId: 0, url: "https://paypa1-login.com/x", tabId: 9 });
+    ok(upd.length === u1 + 1, "onCommitted da solo blocca (redirect lato server)");
+    await onCommitted({ frameId: 0, url: "https://paypa1-login.com/x", tabId: 9 });
+    ok(upd.length === u1 + 1, "dedup: stesso (tab,url) ravvicinato non raddoppia");
+    await window.__onNav({ frameId: 0, url: "https://amazoon.tk/", tabId: 11 });
+    const u2 = upd.length;
+    ok(u2 === u1 + 2, "onBeforeNavigate blocca su tab nuovo");
+    await onCommitted({ frameId: 0, url: "https://amazoon.tk/", tabId: 11 });
+    ok(upd.length === u2, "dedup: onBeforeNavigate + onCommitted stesso url = 1 solo blocco");
 
     /* onboarding: solo alla prima installazione */
     window.__onInstalled({ reason: "install" });

@@ -36,8 +36,16 @@ function renderDiff(el, bad, good) {
   el.append(pre, diff, post);
 }
 
-renderDiff(document.getElementById("suspicious"), suspicious, official);
-document.getElementById("official").textContent = official;
+// Se c'è un sito ufficiale di riferimento, evidenzia le lettere ingannevoli e
+// mostra il confronto. Per gli "script misti" non c'è un ufficiale preciso:
+// mostriamo solo il dominio visitato e nascondiamo la riga "Assomiglia a".
+if (official) {
+  renderDiff(document.getElementById("suspicious"), suspicious, official);
+  document.getElementById("official").textContent = official;
+} else {
+  document.getElementById("suspicious").textContent = suspicious;
+  document.getElementById("official-row").hidden = true;
+}
 
 // Spiega PERCHÉ il sito è stato segnalato.
 const reasonKey = {
@@ -45,7 +53,9 @@ const reasonKey = {
   omografi: "reasonHomograph",
   sottodominio: "reasonSubdomain",
   combo: "reasonCombo",
-  tld: "reasonTld"
+  tld: "reasonTld",
+  hosting: "reasonHosting",
+  scriptmisti: "reasonMixed"
 }[reason];
 const reasonEl = document.getElementById("reason");
 if (reasonEl && reasonKey) reasonEl.textContent = t(reasonKey);
