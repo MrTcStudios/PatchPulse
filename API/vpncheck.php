@@ -5,13 +5,21 @@ error_reporting(0);
 header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once __DIR__ . "/../lang/lang.php";
 require_once __DIR__ . "/../security/rate_limiter.php";
 
-// Rate limit persistente su IP (5/min). Sopravvive a reset di sessione.
 $rlIp = rl_client_ip();
 $rlId = rl_identifier($rlIp);
-$rlDb = @new mysqli(getenv('DB_HOST'), getenv('DB_USER'), getenv('DB_PASS'), getenv('DB_NAME'));
+$rlDb = @new mysqli(
+    (string) getenv('DB_HOST'),
+    (string) getenv('DB_USER'),
+    (string) getenv('DB_PASS'),
+    (string) getenv('DB_NAME')
+);
 if (!$rlDb || $rlDb->connect_errno) {
     http_response_code(503);
     echo json_encode(['error' => t('api.rate_limit', false)]);
@@ -35,21 +43,15 @@ if (empty($key)) {
 }
 
 function getRealIP() {
-    $headers = ['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'REMOTE_ADDR'];
-    foreach ($headers as $header) {
-        if (!empty($_SERVER[$header])) {
-            $ip = trim(explode(',', $_SERVER[$header])[0]);
-            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                return $ip;
-            }
-        }
+    $cf = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '';
+    if (!empty($cf) && filter_var($cf, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+        return $cf;
     }
-    return $_SERVER['REMOTE_ADDR'];
+    return $_SERVER['REMOTE_ADDR'] ?? '';
 }
 
 $client_ip = getRealIP();
 
-// Validazione aggiuntiva dell'IP
 if (!filter_var($client_ip, FILTER_VALIDATE_IP)) {
     http_response_code(400);
     echo json_encode(['error' => 'IP non valido']);

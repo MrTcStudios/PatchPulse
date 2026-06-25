@@ -14,6 +14,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . "/lang/lang.php";
+require_once __DIR__ . "/security/rate_limiter.php";
 
 try {
     if (!isset($_SESSION['user_id'])) {
@@ -61,6 +62,20 @@ try {
 
     $userId = (int)$_SESSION['user_id'];
 
+    // ── Rate limiting anti-abuso: conta OGNI tentativo PRIMA del lookup DNS ──
+    // Questo endpoint fa una query DNS-over-HTTPS in uscita per ogni richiesta:
+    // senza limite e' la leva ideale per saturare i worker PHP. Limitiamo per
+    // utente (identita' forte, non falsificabile) e per IP (difesa in profondita').
+    // Fail-open su errore DB: una verifica legittima non deve fallire per il limiter.
+    $rlWindow = 600; // 10 minuti
+    $rlIp     = rl_client_ip();
+    $okUser = rl_consume($conn, 'domain.verify', rl_identifier('domain.verify.user', (string)$userId), 15, $rlWindow);
+    $okIp   = rl_consume($conn, 'domain.verify', rl_identifier('domain.verify.ip', $rlIp), 40, $rlWindow);
+    if (!$okUser || !$okIp) {
+        $conn->close();
+        throw new Exception(t('vd.too_many', false), 429);
+    }
+
     // Recupera il token atteso dal DB
     $stmt = $conn->prepare("SELECT id, verification_token, verified_at FROM verified_domains WHERE user_id = ? AND domain = ?");
     $stmt->bind_param("is", $userId, $domain);
@@ -100,7 +115,7 @@ try {
         'http' => [
             'header'  => "Accept: application/json\r\n",
             'method'  => 'GET',
-            'timeout' => 10,
+            'timeout' => 5,
         ],
     ]);
 
@@ -115,7 +130,7 @@ try {
             'http' => [
                 'header'  => "Accept: application/dns-json\r\n",
                 'method'  => 'GET',
-                'timeout' => 10,
+                'timeout' => 5,
             ],
         ]);
         $dohResponse = @file_get_contents($dohUrl, false, $context);

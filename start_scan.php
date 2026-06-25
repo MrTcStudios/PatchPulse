@@ -66,6 +66,19 @@ try {
         throw new Exception(t('ss.too_many_scans', false), 429);
     }
 
+    // ── Anti-DoS: limita i TENTATIVI, non solo le scansioni riuscite ──
+    // Il limite sopra conta solo i successi (rl_record gira a fine flusso): da solo
+    // non ferma un flood di richieste che falliscono la validazione e non vengono
+    // mai registrate. Questo secondo limite conta OGNI tentativo autenticato, prima
+    // del lookup DNS live. Per-utente (identita' forte) + per-IP (difesa in profondita').
+    $attemptIp     = rl_client_ip();
+    $okAttemptUser = rl_consume($rlConn, 'scan.attempt', rl_identifier('scan.attempt.user', (string)$userId), 30, $rateWindow);
+    $okAttemptIp   = rl_consume($rlConn, 'scan.attempt', rl_identifier('scan.attempt.ip', $attemptIp), 60, $rateWindow);
+    if (!$okAttemptUser || !$okAttemptIp) {
+        $rlConn->close();
+        throw new Exception(t('ss.too_many_scans', false), 429);
+    }
+
     // ── Parsing e validazione input ──
     $rawInput = file_get_contents('php://input');
     if (strlen($rawInput) > 2048) {

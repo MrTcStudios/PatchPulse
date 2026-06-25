@@ -275,6 +275,13 @@ unset($_SESSION['admin_success'], $_SESSION['admin_error'], $_SESSION['sending_s
         <a href="cloudflare_logs.php" class="btn btn-primary">Visualizza Regole</a>
     </div>
 
+    <!-- Monitoraggio Sicurezza -->
+    <div class="card">
+        <h2>Monitoraggio Sicurezza</h2>
+        <p style="color:#888;font-size:0.85rem;margin-bottom:0.8rem">Lockout attivi e pressione sui rate limit (solo dati aggregati, nessun IP).</p>
+        <a href="security_overview.php" class="btn btn-primary">Apri Monitoraggio</a>
+    </div>
+
     <!-- Cambia Password -->
     <div class="card">
         <h2>Cambia Password Admin</h2>

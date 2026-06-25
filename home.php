@@ -290,6 +290,52 @@ $currentLang = pp_lang_current();
             </div>
         </section>
 
+        <!-- BROWSER EXTENSION PROMO -->
+        <section class="section" id="extension">
+            <style>
+                .ext-promo {
+                    display: flex; align-items: center; gap: 2rem;
+                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                    border-radius: 20px; padding: 2.4rem; color: #fff;
+                }
+                .ext-promo-visual {
+                    width: 110px; height: 110px; flex-shrink: 0;
+                    background: rgba(139,124,248,0.15); border: 1px solid rgba(139,124,248,0.3);
+                    border-radius: 24px; display: flex; align-items: center; justify-content: center;
+                }
+                .ext-promo-visual svg { width: 54px; height: 54px; stroke: #8b7cf8; }
+                .ext-promo-tag { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8b7cf8; }
+                .ext-promo h2 { font-size: 1.5rem; font-weight: 600; margin: 0.4rem 0 0.6rem; color: #fff; }
+                .ext-promo p { font-size: 0.92rem; line-height: 1.6; color: rgba(255,255,255,0.7); margin-bottom: 1.2rem; max-width: 54ch; }
+                .ext-promo-cta {
+                    display: inline-flex; align-items: center; gap: 0.5rem;
+                    background: #8b7cf8; color: #fff; text-decoration: none;
+                    padding: 0.7rem 1.3rem; border-radius: 10px; font-weight: 600; font-size: 0.9rem;
+                    transition: background 0.2s;
+                }
+                .ext-promo-cta:hover { background: #6c5ce7; }
+                .ext-promo-cta svg { stroke: #fff; }
+                @media (max-width: 640px) {
+                    .ext-promo { flex-direction: column; text-align: center; padding: 1.8rem; }
+                    .ext-promo p { margin-left: auto; margin-right: auto; }
+                }
+            </style>
+            <div class="ext-promo">
+                <div class="ext-promo-visual">
+                    <svg fill="none" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                </div>
+                <div>
+                    <span class="ext-promo-tag"><?= t('home.ext.tag') ?></span>
+                    <h2><?= t('home.ext.title') ?></h2>
+                    <p><?= t('home.ext.desc') ?></p>
+                    <a href="extension.php" class="ext-promo-cta">
+                        <?= t('home.ext.cta') ?>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </a>
+                </div>
+            </div>
+        </section>
+
         <!-- STATS BAR -->
         <div class="stats-bar">
             <div class="stat-item">

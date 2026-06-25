@@ -14,6 +14,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . "/lang/lang.php";
+require_once __DIR__ . "/security/rate_limiter.php";
 
 try {
     if (!isset($_SESSION['user_id'])) {
@@ -82,6 +83,18 @@ try {
     }
 
     $userId = (int)$_SESSION['user_id'];
+
+    // ── Rate limiting anti-abuso: conta OGNI tentativo PRIMA dell'INSERT ──
+    // Senza limite, variando l'hostname (sub1, sub2, ...) si gonfia la tabella
+    // verified_domains all'infinito. Per-utente + per-IP, fail-open su errore DB.
+    $rlWindow = 600; // 10 minuti
+    $rlIp     = rl_client_ip();
+    $okUser = rl_consume($conn, 'domain.generate', rl_identifier('domain.generate.user', (string)$userId), 15, $rlWindow);
+    $okIp   = rl_consume($conn, 'domain.generate', rl_identifier('domain.generate.ip', $rlIp), 40, $rlWindow);
+    if (!$okUser || !$okIp) {
+        $conn->close();
+        throw new Exception(t('vd.too_many', false), 429);
+    }
 
     // Controlla se il dominio è già verificato e non scaduto
     $stmt = $conn->prepare("SELECT id, verified_at, verification_token FROM verified_domains WHERE user_id = ? AND domain = ?");
