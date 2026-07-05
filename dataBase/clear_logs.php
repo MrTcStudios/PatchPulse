@@ -10,12 +10,13 @@ ini_set('session.use_only_cookies', 1);
 
 session_start();
 
+require_once __DIR__ . "/../security/session_guard.php";
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../log-reg.php");
     exit();
 }
 
-// Deve essere POST (no GET per azioni distruttive)
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     header("Location: ../account.php");
     exit();
@@ -38,6 +39,12 @@ $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
 if ($conn->connect_error) {
     $_SESSION['account_message'] = "flash.internal_error_retry";
     header("Location: ../account.php");
+    exit();
+}
+
+if (!pp_session_is_valid($conn)) {
+    $conn->close();
+    header("Location: ../log-reg.php");
     exit();
 }
 

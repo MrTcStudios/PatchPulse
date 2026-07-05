@@ -26,6 +26,38 @@ if (empty($csrfToken) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSI
     exit();
 }
 
+// ── Turnstile CAPTCHA ──
+$captchaResponse = $_POST['cf-turnstile-response'] ?? '';
+if (empty($captchaResponse)) {
+    $_SESSION['login_message'] = "flash.captcha_required";
+    header("Location: ../log-reg.php");
+    exit();
+}
+
+$secretKey = getenv('TURNSTILE_SECRET_KEY');
+$verifyUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+$verifyData = [
+    'secret'   => $secretKey,
+    'response' => $captchaResponse,
+    'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+];
+$context = stream_context_create([
+    'http' => [
+        'header'  => "Content-Type: application/x-www-form-urlencoded\r\n",
+        'method'  => 'POST',
+        'content' => http_build_query($verifyData),
+        'timeout' => 5,
+    ],
+]);
+$result = @file_get_contents($verifyUrl, false, $context);
+$responseData = $result ? json_decode($result) : null;
+
+if (!$responseData || !$responseData->success) {
+    $_SESSION['login_message'] = "flash.captcha_failed";
+    header("Location: ../log-reg.php");
+    exit();
+}
+
 require '../PHPMailer/src/Exception.php';
 require '../PHPMailer/src/PHPMailer.php';
 require '../PHPMailer/src/SMTP.php';
@@ -69,8 +101,14 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 // e da abuso del servizio email).
 rl_register_failure($conn, $forgotAction, $forgotIpId, 3, 900);
 
-// Messaggio generico per non rivelare se l'email esiste
-$genericMessage = "Se l'email è registrata, riceverai un link per reimpostare la password.";
+$genericMessage = "flash.forgot.generic";
+
+if (!rl_consume($conn, 'forgot_password.email', rl_identifier('forgot', mb_strtolower($email)), 3, 3600)) {
+    $conn->close();
+    $_SESSION['login_message'] = $genericMessage;
+    header("Location: ../log-reg.php");
+    exit();
+}
 
 // Cerca utente
 $stmt = $conn->prepare("SELECT id, name, is_confirmed FROM users WHERE email = ?");
@@ -102,11 +140,11 @@ if (!$isConfirmed) {
 
 // Genera token reset (64 hex chars = 32 bytes)
 $resetToken = bin2hex(random_bytes(32));
-$expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour'));
+// Nel DB va solo l'hash SHA-256; il valore in chiaro vive solo nel link email.
+$resetTokenHash = hash('sha256', $resetToken);
 
-// Salva token nel DB
-$update = $conn->prepare("UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?");
-$update->bind_param("ssi", $resetToken, $expiresAt, $userId);
+$update = $conn->prepare("UPDATE users SET reset_token = ?, reset_token_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?");
+$update->bind_param("si", $resetTokenHash, $userId);
 
 if (!$update->execute()) {
     $update->close();
@@ -118,7 +156,7 @@ if (!$update->execute()) {
 $update->close();
 
 // Log
-$userIp = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'unknown';
+$userIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 if (!filter_var($userIp, FILTER_VALIDATE_IP)) $userIp = 'unknown';
 
 $log = $conn->prepare("INSERT INTO activity_logs (user_id, action, ip_address) VALUES (?, 'password_reset_requested', ?)");
@@ -143,7 +181,7 @@ try {
     $mail->Port       = 587;
     $mail->Timeout    = 10;
 
-    $mail->setFrom(getenv('SMTP_FROM') ?: 'support@email.mrtc.cc', 'PatchPulse');
+    $mail->setFrom(getenv('SMTP_FROM') ?: 'support@patchpulse.org', 'PatchPulse');
     $mail->addAddress($email);
 
     $mail->isHTML(true);

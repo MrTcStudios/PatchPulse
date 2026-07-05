@@ -13,6 +13,7 @@ ini_set('display_errors', 0);
 error_reporting(0);
 
 require_once __DIR__ . "/../security/rate_limiter.php";
+require_once __DIR__ . "/../security/session_guard.php";
 
 $db_host = getenv('DB_HOST');
 $db_name = getenv('DB_NAME');
@@ -87,7 +88,6 @@ if (rl_lockout_remaining($conn, $loginAction, $loginIpId) > 0) {
 
 // ── Input ──
 $email = filter_var(trim($_POST['EmailOfUser'] ?? ''), FILTER_SANITIZE_EMAIL);
-// NON applicare htmlspecialchars alla password — corrompe i caratteri speciali
 $password = $_POST['PasswordOfUserUnCrypt'] ?? '';
 
 if (empty($email) || empty($password)) {
@@ -102,6 +102,17 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     exit();
 }
 
+// ── Brute force protection (persistente per ACCOUNT/email) ──
+$loginAcctAction = 'login.account';
+$loginAcctId     = rl_identifier('acct', mb_strtolower($email));
+
+if (rl_lockout_remaining($conn, $loginAcctAction, $loginAcctId) > 0) {
+    $_SESSION['login_message'] = "flash.login.too_many";
+    $conn->close();
+    header("Location: ../log-reg.php");
+    exit();
+}
+
 // ── Query ──
 $stmt = $conn->prepare("SELECT id, name, password, is_confirmed FROM users WHERE email = ?");
 $stmt->bind_param("s", $email);
@@ -112,10 +123,10 @@ $stmt->store_result();
 $genericError = "flash.login.invalid";
 
 if ($stmt->num_rows === 0) {
-    // Esegui un hash fittizio per evitare timing attack
-    password_verify($password, '$2y$10$dummyhashtopreventtimingattackxxxxxxxxxxxxxxxxxxxxxx');
+    password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
 
     rl_register_failure($conn, $loginAction, $loginIpId, 5, 300);
+    rl_register_failure($conn, $loginAcctAction, $loginAcctId, 10, 900);
 
     $_SESSION['login_message'] = $genericError;
     $stmt->close();
@@ -127,18 +138,19 @@ if ($stmt->num_rows === 0) {
 $stmt->bind_result($user_id, $name, $hashed_password, $is_confirmed);
 $stmt->fetch();
 
-if (!$is_confirmed) {
-    $_SESSION['login_message'] = "flash.login.unverified";
+if (!password_verify($password, $hashed_password)) {
+    rl_register_failure($conn, $loginAction, $loginIpId, 5, 300);
+    rl_register_failure($conn, $loginAcctAction, $loginAcctId, 10, 900);
+
+    $_SESSION['login_message'] = $genericError;
     $stmt->close();
     $conn->close();
     header("Location: ../log-reg.php");
     exit();
 }
 
-if (!password_verify($password, $hashed_password)) {
-    rl_register_failure($conn, $loginAction, $loginIpId, 5, 300);
-
-    $_SESSION['login_message'] = $genericError;
+if (!$is_confirmed) {
+    $_SESSION['login_message'] = "flash.login.unverified";
     $stmt->close();
     $conn->close();
     header("Location: ../log-reg.php");
@@ -150,19 +162,23 @@ if (!password_verify($password, $hashed_password)) {
 // Rigenera session ID per prevenire session fixation
 session_regenerate_id(true);
 
-// Reset tentativi
+// Reset tentativi (per-IP e per-account)
 rl_clear_failures($conn, $loginAction, $loginIpId);
+rl_clear_failures($conn, $loginAcctAction, $loginAcctId);
 
 $_SESSION['user_id'] = $user_id;
 $_SESSION['email'] = $email;
 $_SESSION['name'] = $name;
+$_SESSION['auth_epoch'] = pp_fetch_auth_epoch($conn, (int)$user_id);
+$_SESSION['created_at']    = time();
+$_SESSION['last_activity'] = time();
 
 // Rigenera CSRF token per la nuova sessione
 $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
 sendLoginWebhook($user_id, $name, $email);
 
-$user_ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'unknown';
+$user_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 if (!filter_var($user_ip, FILTER_VALIDATE_IP)) {
     $user_ip = 'unknown';
 }

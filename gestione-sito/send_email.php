@@ -32,6 +32,7 @@ if (empty($csrfToken) || !isset($_SESSION['admin_csrf']) || !hash_equals($_SESSI
 require '../PHPMailer/src/Exception.php';
 require '../PHPMailer/src/PHPMailer.php';
 require '../PHPMailer/src/SMTP.php';
+require_once __DIR__ . '/../security/email_prefs.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -61,8 +62,12 @@ if (mb_strlen($message) > 10000) {
 $safeSubject = htmlspecialchars($subject, ENT_QUOTES, 'UTF-8');
 $safeMessage = nl2br(htmlspecialchars($message, ENT_QUOTES, 'UTF-8'));
 
-// Recupera utenti
-$stmt = $conn->prepare("SELECT email FROM users WHERE is_confirmed = TRUE");
+$stmt = $conn->prepare("SELECT email FROM users WHERE is_confirmed = TRUE AND email_opt_out = 0");
+if (!$stmt) {
+    $_SESSION['admin_error'] = "Errore DB. Hai eseguito la migration email_optout?";
+    header("Location: dashboard.php");
+    exit;
+}
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -100,6 +105,9 @@ while ($row = $result->fetch_assoc()) {
         $mail->isHTML(true);
         $mail->Subject = $safeSubject;
         $mail->Body    = $safeMessage;
+
+        // Header standard di disiscrizione one-click (no-op se manca UNSUBSCRIBE_SECRET).
+        pp_apply_list_unsubscribe($mail, $email);
 
         $mail->send();
         $sentEmails++;

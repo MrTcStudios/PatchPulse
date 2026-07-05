@@ -25,8 +25,7 @@ if (empty($_SESSION['admin_csrf'])) {
 
 $errore = '';
 
-// Connessione DB (per rate limiter persistente). Apri solo per POST per
-// non sprecare connessioni alla pagina di GET.
+// Connessione DB (per rate limiter persistente).
 $rlConn = null;
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $rlConn = @new mysqli(getenv('DB_HOST'), getenv('DB_USER'), getenv('DB_PASS'), getenv('DB_NAME'));
@@ -46,7 +45,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $rlConn) {
         $errore = "Richiesta non valida. Riprova.";
     } else {
         // Brute force protection persistente per IP (5 tentativi → 10 min lockout).
-        // Bypass via session reset NON è più possibile: persistito nel DB.
         $remaining = rl_lockout_remaining($rlConn, $adminAction, $adminIpId);
         if ($remaining > 0) {
             $errore = "Troppi tentativi. Riprova tra {$remaining} secondi.";
@@ -94,8 +92,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $rlConn) {
                             session_regenerate_id(true);
                             rl_clear_failures($rlConn, $adminAction, $adminIpId);
                             $_SESSION['admin'] = true;
-                            $_SESSION['admin_ip'] = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['REMOTE_ADDR'];
+                            $_SESSION['admin_ip'] = $_SERVER['REMOTE_ADDR'] ?? '';
                             $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
+                            // Timer di sessione admin (idle 30 min / assoluto 4h, enforced in config.php).
+                            $_SESSION['admin_created_at']    = time();
+                            $_SESSION['admin_last_activity'] = time();
                             $rlConn->close();
                             header("Location: dashboard.php");
                             exit;

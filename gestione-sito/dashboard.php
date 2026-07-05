@@ -101,6 +101,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $s2 = $conn->prepare("DELETE FROM scans WHERE user_id = ?");
                     $s2->bind_param("i", $id); $s2->execute(); $s2->close();
 
+                    // Domini verificati: da eliminare insieme all'utente (niente righe orfane)
+                    $s2b = $conn->prepare("DELETE FROM verified_domains WHERE user_id = ?");
+                    if ($s2b) { $s2b->bind_param("i", $id); $s2b->execute(); $s2b->close(); }
+
                     $s3 = $conn->prepare("DELETE FROM users WHERE id = ?");
                     $s3->bind_param("i", $id); $s3->execute();
 
@@ -275,12 +279,11 @@ unset($_SESSION['admin_success'], $_SESSION['admin_error'], $_SESSION['sending_s
         <a href="cloudflare_logs.php" class="btn btn-primary">Visualizza Regole</a>
     </div>
 
-    <!-- Monitoraggio Sicurezza -->
-    <div class="card">
-        <h2>Monitoraggio Sicurezza</h2>
-        <p style="color:#888;font-size:0.85rem;margin-bottom:0.8rem">Lockout attivi e pressione sui rate limit (solo dati aggregati, nessun IP).</p>
-        <a href="security_overview.php" class="btn btn-primary">Apri Monitoraggio</a>
-    </div>
+   <!-- Rate Limiter -->
+   <div class="card">
+        <h2>Rate Limiter</h2>
+        <a href="security_overview.php" class="btn btn-primary">Visualizza</a>
+   </div>
 
     <!-- Cambia Password -->
     <div class="card">

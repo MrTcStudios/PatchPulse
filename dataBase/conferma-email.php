@@ -31,9 +31,16 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
     exit();
 }
 
-// Conferma l'account
-$stmt = $conn->prepare("UPDATE users SET is_confirmed = TRUE, confirmation_token = NULL WHERE confirmation_token = ? AND is_confirmed = FALSE");
-$stmt->bind_param("s", $token);
+// Il DB conserva l'hash del token: confronta l'hash dell'input.
+$tokenHash = hash('sha256', $token);
+
+$stmt = @$conn->prepare("UPDATE users SET is_confirmed = TRUE, confirmation_token = NULL, confirmation_expires = NULL
+                         WHERE confirmation_token = ? AND is_confirmed = FALSE
+                           AND (confirmation_expires IS NULL OR confirmation_expires > NOW())");
+if (!$stmt) { // colonna non ancora presente (migration non applicata)
+    $stmt = $conn->prepare("UPDATE users SET is_confirmed = TRUE, confirmation_token = NULL WHERE confirmation_token = ? AND is_confirmed = FALSE");
+}
+$stmt->bind_param("s", $tokenHash);
 $stmt->execute();
 
 if ($stmt->affected_rows > 0) {

@@ -37,6 +37,26 @@ if ($conn->connect_error) {
     exit('Database connection failed.');
 }
 
+require_once __DIR__ . '/security/session_guard.php';
+pp_session_is_valid($conn);
+
+if (isset($_SESSION['admin']) && $_SESSION['admin'] === true) {
+    $adminNow   = time();
+    $ipMismatch = isset($_SESSION['admin_ip']) && $_SESSION['admin_ip'] !== ($_SERVER['REMOTE_ADDR'] ?? '');
+    $idleOut    = isset($_SESSION['admin_last_activity']) && ($adminNow - (int)$_SESSION['admin_last_activity']) > 1800;
+    $absOut     = isset($_SESSION['admin_created_at'])    && ($adminNow - (int)$_SESSION['admin_created_at'])    > 14400;
+
+    if ($ipMismatch || $idleOut || $absOut) {
+        unset($_SESSION['admin'], $_SESSION['admin_ip'], $_SESSION['admin_csrf'],
+              $_SESSION['admin_last_activity'], $_SESSION['admin_created_at']);
+    } else {
+        $_SESSION['admin_last_activity'] = $adminNow;
+        if (!isset($_SESSION['admin_created_at'])) {
+            $_SESSION['admin_created_at'] = $adminNow;
+        }
+    }
+}
+
 if (!isset($_SESSION['admin']) || $_SESSION['admin'] !== true) {
     $mStmt = $conn->prepare("SELECT setting_value FROM site_settings WHERE setting_key = 'maintenance_mode'");
     if ($mStmt) {

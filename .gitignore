@@ -5,4 +5,4 @@
 .claude/
 *.tar.gz
 *.swp
-
+*.env

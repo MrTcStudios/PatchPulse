@@ -34,7 +34,7 @@ if (empty($token)) {
     echo json_encode(['error' => t('flash.internal_error', false)]);
     exit();
 }
-$clientIP = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
+$clientIP = $_SERVER['REMOTE_ADDR'] ?? '';
 if (empty($clientIP) || !filter_var($clientIP, FILTER_VALIDATE_IP)) {
     http_response_code(400);
     echo json_encode(['error' => 'IP non valido']);

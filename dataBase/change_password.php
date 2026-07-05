@@ -12,6 +12,7 @@ session_start();
 
 require_once __DIR__ . "/../lang/lang.php";
 require_once __DIR__ . "/../security/rate_limiter.php";
+require_once __DIR__ . "/../security/session_guard.php";
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../log-reg.php");
@@ -50,6 +51,12 @@ if ($conn->connect_error) {
     exit();
 }
 
+if (!pp_session_is_valid($conn)) {
+    $conn->close();
+    header("Location: ../log-reg.php");
+    exit();
+}
+
 $user_id = (int)$_SESSION['user_id'];
 
 // Brute force protection: 5 tentativi falliti → lockout 15 min.
@@ -62,7 +69,6 @@ if (rl_lockout_remaining($conn, $pwdAction, $pwdIdentifier) > 0) {
     exit();
 }
 
-// NON applicare htmlspecialchars alle password
 $current_password = $_POST['current_password'] ?? '';
 $new_password = $_POST['new_password'] ?? '';
 $confirm_new_password = $_POST['confirm_new_password'] ?? '';
@@ -121,7 +127,16 @@ if (!password_verify($current_password, $hashed_password)) {
 // Aggiorna password (bcrypt cost 12)
 $new_hashed_password = password_hash($new_password, PASSWORD_BCRYPT, ['cost' => 12]);
 
-$update_stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+$update_stmt = @$conn->prepare(
+    "UPDATE users SET password = ?,
+        reset_token = NULL,    reset_token_expires = NULL,
+        temp_email = NULL,     email_change_token = NULL, email_change_expires = NULL,
+        deletion_token = NULL, deletion_token_expires = NULL
+     WHERE id = ?"
+);
+if (!$update_stmt) { // colonne assenti (migration non applicata)
+    $update_stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+}
 $update_stmt->bind_param("si", $new_hashed_password, $user_id);
 
 if (!$update_stmt->execute()) {
@@ -133,6 +148,11 @@ if (!$update_stmt->execute()) {
 }
 $update_stmt->close();
 
+// Invalida le altre sessioni dell'utente e riallinea quella corrente (l'utente
+// resta loggato qui, ma gli altri dispositivi verranno disconnessi).
+pp_bump_auth_epoch($conn, $user_id);
+$_SESSION['auth_epoch'] = pp_fetch_auth_epoch($conn, $user_id);
+
 // Reset contatore tentativi dopo successo
 rl_clear_failures($conn, $pwdAction, $pwdIdentifier);
 
@@ -140,7 +160,8 @@ rl_clear_failures($conn, $pwdAction, $pwdIdentifier);
 session_regenerate_id(true);
 
 // Log
-$user_ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'unknown';
+// mod_remoteip mette l'IP reale del client (CF-Connecting-IP) in REMOTE_ADDR e rimuove l'header originale.
+$user_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 if (!filter_var($user_ip, FILTER_VALIDATE_IP)) {
     $user_ip = 'unknown';
 }

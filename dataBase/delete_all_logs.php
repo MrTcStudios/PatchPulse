@@ -10,6 +10,8 @@ ini_set('session.use_only_cookies', 1);
 
 session_start();
 
+require_once __DIR__ . "/../security/session_guard.php";
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../log-reg.php");
     exit();
@@ -35,6 +37,12 @@ $db_pass = getenv('DB_PASS');
 $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
 if ($conn->connect_error) {
     header("Location: ../account.php?error=internal");
+    exit();
+}
+
+if (!pp_session_is_valid($conn)) {
+    $conn->close();
+    header("Location: ../log-reg.php");
     exit();
 }
 

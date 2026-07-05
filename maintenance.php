@@ -19,8 +19,7 @@ $currentLang = pp_lang_current();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= t('maintenance.title_tag') ?></title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/fonts/legacy.css">
     <style>
         :root { --purple: #8b7cf8; --purple-dark: #6c5ce7; }
         * { margin: 0; padding: 0; box-sizing: border-box; }

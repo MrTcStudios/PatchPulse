@@ -94,7 +94,7 @@
         togglePassword.addEventListener('click', function () {
             const type = passwordField.type === 'password' ? 'text' : 'password';
             passwordField.type = type;
-            this.textContent = type === 'password' ? '👁' : '👁‍🗨';
+            this.textContent = type === 'password' ? '' : '';
         });
     }
 
@@ -236,27 +236,32 @@
         const toggleText   = document.getElementById('toggle-text');
         const toggleBtn    = document.getElementById('toggle-btn');
 
-        let isLoginForm = true;
+        // Stato del pannello auth: 'login' | 'register' | 'forgot'.
+        // Un SOLO handler (toggleForm) legato a toggleBtn — niente mix
+        // addEventListener + onclick, che faceva scattare due handler sullo
+        // stesso click lasciando login E register entrambi .active.
+        let mode = 'login';
 
-        function toggleForm() {
+        function showLogin() {
             if (forgotForm) forgotForm.classList.remove('active');
-            if (isLoginForm) {
-                loginForm.classList.remove('active');
-                registerForm.classList.add('active');
-                if (formTitle)    formTitle.textContent    = T('js.auth.title_register');
-                if (formSubtitle) formSubtitle.textContent = T('js.auth.subtitle_register');
-                if (toggleText)   toggleText.textContent   = T('js.auth.toggle_to_login');
-                if (toggleBtn)    toggleBtn.textContent    = T('js.auth.btn_to_login');
-                isLoginForm = false;
-            } else {
-                registerForm.classList.remove('active');
-                loginForm.classList.add('active');
-                if (formTitle)    formTitle.textContent    = T('js.auth.title_login');
-                if (formSubtitle) formSubtitle.textContent = T('js.auth.subtitle_login');
-                if (toggleText)   toggleText.textContent   = T('js.auth.toggle_to_register');
-                if (toggleBtn)    toggleBtn.textContent    = T('js.auth.btn_to_register');
-                isLoginForm = true;
-            }
+            registerForm.classList.remove('active');
+            loginForm.classList.add('active');
+            if (formTitle)    formTitle.textContent    = T('js.auth.title_login');
+            if (formSubtitle) formSubtitle.textContent = T('js.auth.subtitle_login');
+            if (toggleText)   toggleText.textContent   = T('js.auth.toggle_to_register');
+            if (toggleBtn)    toggleBtn.textContent    = T('js.auth.btn_to_register');
+            mode = 'login';
+        }
+
+        function showRegister() {
+            if (forgotForm) forgotForm.classList.remove('active');
+            loginForm.classList.remove('active');
+            registerForm.classList.add('active');
+            if (formTitle)    formTitle.textContent    = T('js.auth.title_register');
+            if (formSubtitle) formSubtitle.textContent = T('js.auth.subtitle_register');
+            if (toggleText)   toggleText.textContent   = T('js.auth.toggle_to_login');
+            if (toggleBtn)    toggleBtn.textContent    = T('js.auth.btn_to_login');
+            mode = 'register';
         }
 
         function showForgotPassword() {
@@ -264,36 +269,25 @@
             loginForm.classList.remove('active');
             registerForm.classList.remove('active');
             forgotForm.classList.add('active');
-
             if (formTitle)    formTitle.textContent    = T('js.auth.title_forgot');
             if (formSubtitle) formSubtitle.textContent = T('js.auth.subtitle_forgot');
             if (toggleText)   toggleText.textContent   = T('js.auth.toggle_forgot');
-            if (toggleBtn) {
-                toggleBtn.textContent = T('js.auth.btn_back_login');
-                toggleBtn.onclick = function () {
-                    forgotForm.classList.remove('active');
-                    loginForm.classList.add('active');
-                    if (formTitle)    formTitle.textContent    = T('js.auth.title_login');
-                    if (formSubtitle) formSubtitle.textContent = T('js.auth.subtitle_login');
-                    if (toggleText)   toggleText.textContent   = T('js.auth.toggle_to_register');
-                    if (toggleBtn)    toggleBtn.textContent    = T('js.auth.btn_to_register');
-                    toggleBtn.onclick = toggleForm;
-                    isLoginForm = true;
-                };
-            }
+            if (toggleBtn)    toggleBtn.textContent    = T('js.auth.btn_back_login');
+            mode = 'forgot';
+        }
+
+        // Dal login → register; da register o forgot → login.
+        function toggleForm() {
+            if (mode === 'login') showRegister();
+            else showLogin();
         }
 
         function togglePasswordField(fieldId) {
             const field = document.getElementById(fieldId);
             if (!field) return;
-            const button = field.nextElementSibling;
-            if (field.type === 'password') {
-                field.type = 'text';
-                if (button) button.textContent = '🙈';
-            } else {
-                field.type = 'password';
-                if (button) button.textContent = '👁️';
-            }
+            // Mostra/nascondi: tocchiamo solo il tipo dell'input.
+            // L'icona (SVG nell'HTML) resta fissa — niente swap di contenuto.
+            field.type = field.type === 'password' ? 'text' : 'password';
         }
 
         // Bind toggle/forgot buttons (precedentemente onclick inline)
@@ -527,7 +521,7 @@
                     resultsDiv.className = 'results danger';
 
                     // T() returns escaped HTML by default for server-side use, but here we built
-                    // the strings carefully — the breach.found_count value contains <span>⚠️</span>
+                    // the strings carefully — the breach.found_count value contains <span></span>
                     // and is from our hard-coded translations.php, never from user input.
                     let html = '<div class="breach-count">' +
                                T('js.breach.found_count').replace('{0}', String(data.found)) +
@@ -649,10 +643,10 @@
             const vpnStatus = getVPNStatus(security);
             html += '<div class="result">' +
                 '<strong>' + escHtml(T('js.vpn.section_vpn')) + '</strong><br><br>' +
-                (security.vpn   ? '✅ <span class="secure">' + escHtml(T('js.vpn.vpn_detected')) + '</span><br>'   : '❌ <span class="warning">' + escHtml(T('js.vpn.vpn_none'))   + '</span><br>') +
-                (security.proxy ? '✅ <span class="secure">' + escHtml(T('js.vpn.proxy_detected')) + '</span><br>' : '❌ <span class="warning">' + escHtml(T('js.vpn.proxy_none')) + '</span><br>') +
-                (security.tor   ? '✅ <span class="secure">' + escHtml(T('js.vpn.tor_detected')) + '</span><br>'   : '❌ <span class="warning">' + escHtml(T('js.vpn.tor_none'))   + '</span><br>') +
-                (security.relay ? '✅ <span class="secure">' + escHtml(T('js.vpn.relay_active')) + '</span><br>' : '') +
+                (security.vpn   ? '<span class="secure">' + escHtml(T('js.vpn.vpn_detected')) + '</span><br>'   : '<span class="warning">' + escHtml(T('js.vpn.vpn_none'))   + '</span><br>') +
+                (security.proxy ? '<span class="secure">' + escHtml(T('js.vpn.proxy_detected')) + '</span><br>' : '<span class="warning">' + escHtml(T('js.vpn.proxy_none')) + '</span><br>') +
+                (security.tor   ? '<span class="secure">' + escHtml(T('js.vpn.tor_detected')) + '</span><br>'   : '<span class="warning">' + escHtml(T('js.vpn.tor_none'))   + '</span><br>') +
+                (security.relay ? '<span class="secure">' + escHtml(T('js.vpn.relay_active')) + '</span><br>' : '') +
                 '<br><div style="padding:1rem;background:rgba(0,0,0,0.3);border-radius:10px;margin-top:1rem;">' +
                 '<strong>' + escHtml(T('js.vpn.overall_label')) + '</strong> <span class="' + vpnStatus.class + '">' + escHtml(vpnStatus.message) + '</span></div>' +
                 '</div>';
@@ -672,7 +666,7 @@
             const overall = getOverallSecurityStatus(security, webRTCStatus);
             html += '<div class="result" style="border:2px solid ' + overall.color + ';background:' + overall.bg + ';">' +
                 '<strong>' + escHtml(T('js.vpn.section_overall')) + '</strong><br><br>' +
-                '<div style="font-size:1.2rem;"><span class="' + overall.class + '">' + overall.icon + ' ' + escHtml(overall.title) + '</span></div>' +
+                '<div style="font-size:1.2rem;"><span class="' + overall.class + '">' + escHtml(overall.title) + '</span></div>' +
                 '<p style="margin-top:1rem;color:#ccc;">' + escHtml(overall.description) + '</p>' +
                 (overall.recommendations
                     // overall.recommendations contains <br> tags from translations.php — these
@@ -701,34 +695,34 @@
             if (hasVPN && webRTCSecure) {
                 return {
                     class: 'secure', color: '#00ff88', bg: 'rgba(0, 255, 136, 0.1)',
-                    icon: '✅', title: T('js.vpn.overall.optimal_title'),
+                    icon: '', title: T('js.vpn.overall.optimal_title'),
                     description: T('js.vpn.overall.optimal_desc')
                 };
             } else if (hasVPN && webRTCStatus === 'warning') {
                 return {
                     class: 'warning', color: '#ffaa00', bg: 'rgba(255, 170, 0, 0.1)',
-                    icon: '⚠️', title: T('js.vpn.overall.good_title'),
+                    icon: '', title: T('js.vpn.overall.good_title'),
                     description: T('js.vpn.overall.good_desc'),
                     recommendations: T('js.vpn.overall.good_recs')
                 };
             } else if (hasVPN && webRTCStatus === 'danger') {
                 return {
                     class: 'danger', color: '#ff4444', bg: 'rgba(255, 68, 68, 0.1)',
-                    icon: '❌', title: T('js.vpn.overall.leak_title'),
+                    icon: '', title: T('js.vpn.overall.leak_title'),
                     description: T('js.vpn.overall.leak_desc'),
                     recommendations: T('js.vpn.overall.leak_recs')
                 };
             } else if (!hasVPN && webRTCSecure) {
                 return {
                     class: 'warning', color: '#ffaa00', bg: 'rgba(255, 170, 0, 0.1)',
-                    icon: '⚠️', title: T('js.vpn.overall.partial_title'),
+                    icon: '', title: T('js.vpn.overall.partial_title'),
                     description: T('js.vpn.overall.partial_desc'),
                     recommendations: T('js.vpn.overall.partial_recs')
                 };
             } else {
                 return {
                     class: 'danger', color: '#ff4444', bg: 'rgba(255, 68, 68, 0.1)',
-                    icon: '🚨', title: T('js.vpn.overall.none_title'),
+                    icon: '', title: T('js.vpn.overall.none_title'),
                     description: T('js.vpn.overall.none_desc'),
                     recommendations: T('js.vpn.overall.none_recs')
                 };
@@ -904,8 +898,8 @@
                 const text = target.textContent;
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(text).then(() => {
-                        btn.textContent = '✓';
-                        setTimeout(() => btn.textContent = '📋', 1500);
+                        btn.classList.add('copied');
+                        setTimeout(() => btn.classList.remove('copied'), 1500);
                     });
                 }
             });
@@ -1185,7 +1179,7 @@
             }
             errEl.style.display = 'block';
             errEl.innerHTML =
-                '<div class="busy-icon">❌</div>' +
+                '<div class="busy-icon"></div>' +
                 '<h3>' + escHtml(T('js.vs.error_title')) + '</h3>' +
                 '<p>' + escHtml(msg) + '</p>' +
                 '<button class="scan-submit" data-scan-close="error" style="max-width:220px;margin-top:1rem">' + escHtml(T('js.vs.close')) + '</button>';
@@ -1345,7 +1339,7 @@
 
             if (name === 'nmap') {
                 if (d.ports.length === 0 && !d.done) { body.innerHTML = '<span class="waiting">' + escHtml(T('js.vs.ports_running')) + '</span>'; return; }
-                if (d.ports.length === 0 && d.done) { html = '<div class="hdr-item"><span class="hdr-icon">✅</span><span class="hdr-val hdr-ok">Nessuna porta aperta trovata</span></div>'; }
+                if (d.ports.length === 0 && d.done) { html = '<div class="hdr-item"><span class="hdr-icon"></span><span class="hdr-val hdr-ok">Nessuna porta aperta trovata</span></div>'; }
                 else {
                     html = '<div style="margin-bottom:0.5rem;font-size:0.82rem;color:#999">' + d.ports.length + ' port' + (d.ports.length > 1 ? 'e' : 'a') + ' apert' + (d.ports.length > 1 ? 'e' : 'a') + '</div><div class="port-tags">';
                     const risky = ['21','22','23','25','110','135','139','445','3306','3389','5432'];
@@ -1356,7 +1350,7 @@
                     html += '</div>';
                     const riskyFound = d.ports.filter(p => risky.includes(p.port));
                     if (riskyFound.length > 0) {
-                        html += '<div class="hdr-tip" style="margin-top:0.6rem;color:#dc2626">⚠ Port' + (riskyFound.length > 1 ? 'e' : 'a') + ' sensibil' + (riskyFound.length > 1 ? 'i' : 'e') + ': ' + riskyFound.map(p => p.port).join(', ') + ' — valuta se necessari' + (riskyFound.length > 1 ? 'e' : 'a') + '</div>';
+                        html += '<div class="hdr-tip" style="margin-top:0.6rem;color:#dc2626">Port' + (riskyFound.length > 1 ? 'e' : 'a') + ' sensibil' + (riskyFound.length > 1 ? 'i' : 'e') + ': ' + riskyFound.map(p => p.port).join(', ') + ' — valuta se necessari' + (riskyFound.length > 1 ? 'e' : 'a') + '</div>';
                     }
                 }
             }
@@ -1394,13 +1388,13 @@
                         lines.forEach(l => {
                             let icon = '', color = '#555';
                             if (l.includes('(OK)') || l.includes('not vulnerable') || l.includes('not offered') || l.includes('offered (OK)')) {
-                                icon = '✅'; color = '#22a06b';
+                                icon = ''; color = '#22a06b';
                             } else if (l.includes('VULNERABLE') || l.includes('NOT ok') || l.includes('CRITICAL') || l.includes('HIGH')) {
-                                icon = '🚨'; color = '#dc2626';
+                                icon = ''; color = '#dc2626';
                             } else if (l.includes('offered') || l.includes('yes')) {
-                                icon = 'ℹ️'; color = '#555';
+                                icon = ''; color = '#555';
                             } else if (l.includes('MEDIUM') || l.includes('WARN')) {
-                                icon = '⚠️'; color = '#d97706';
+                                icon = ''; color = '#d97706';
                             }
                             if (icon) {
                                 html += '<div class="hdr-item"><span class="hdr-icon">' + icon + '</span><span class="hdr-val" style="color:' + color + ';font-size:0.82rem">' + escHtml(l) + '</span></div>';
@@ -1413,7 +1407,7 @@
 
                     if (dt.vulns.length > 0) {
                         html += '<div style="margin-top:0.5rem;border-top:1px solid rgba(0,0,0,0.05);padding-top:0.5rem">';
-                        html += '<div class="hdr-tip" style="color:#dc2626">🚨 ' + dt.vulns.length + ' vulnerabilità TLS rilevat' + (dt.vulns.length > 1 ? 'e' : 'a') + '</div>';
+                        html += '<div class="hdr-tip" style="color:#dc2626">' + dt.vulns.length + ' vulnerabilità TLS rilevat' + (dt.vulns.length > 1 ? 'e' : 'a') + '</div>';
                         html += '</div>';
                     }
                 }
@@ -1424,13 +1418,13 @@
                 if (d2.items.length === 0 && !d.done) { body.innerHTML = '<span class="waiting">' + escHtml(T('js.vs.headers_running')) + '</span>'; return; }
                 if (d2.items.length === 0 && d.done) { html = '<span class="waiting">Nessun dato ottenuto.</span>'; }
                 else {
-                    if (d2.server) html += '<div class="hdr-item"><span class="hdr-icon">🖥</span><span class="hdr-name">Server</span><span class="hdr-val">' + escHtml(d2.server) + '</span></div>';
+                    if (d2.server) html += '<div class="hdr-item"><span class="hdr-icon"></span><span class="hdr-name">Server</span><span class="hdr-val">' + escHtml(d2.server) + '</span></div>';
                     const ok   = d2.items.filter(i => i.ok);
                     const miss = d2.items.filter(i => !i.ok && !i.warn);
                     const warn = d2.items.filter(i => i.warn);
-                    miss.forEach(i => { html += '<div class="hdr-item"><span class="hdr-icon">❌</span><span class="hdr-val hdr-miss">' + escHtml(i.text) + '</span></div>'; });
-                    warn.forEach(i => { html += '<div class="hdr-item"><span class="hdr-icon">⚠️</span><span class="hdr-val" style="color:#d97706">' + escHtml(i.text) + '</span></div>'; });
-                    ok.forEach(i =>   { html += '<div class="hdr-item"><span class="hdr-icon">✅</span><span class="hdr-val hdr-ok">' + escHtml(i.text) + '</span></div>'; });
+                    miss.forEach(i => { html += '<div class="hdr-item"><span class="hdr-icon"></span><span class="hdr-val hdr-miss">' + escHtml(i.text) + '</span></div>'; });
+                    warn.forEach(i => { html += '<div class="hdr-item"><span class="hdr-icon"></span><span class="hdr-val" style="color:#d97706">' + escHtml(i.text) + '</span></div>'; });
+                    ok.forEach(i =>   { html += '<div class="hdr-item"><span class="hdr-icon"></span><span class="hdr-val hdr-ok">' + escHtml(i.text) + '</span></div>'; });
 
                     if (d2.cspFull) {
                         html += '<div style="margin-top:0.6rem;font-size:0.78rem;color:#999;margin-bottom:0.3rem">Content-Security-Policy completa</div>';
@@ -1439,12 +1433,12 @@
                     if (d2.cookies.length > 0) {
                         html += '<div style="margin-top:0.6rem;font-size:0.78rem;color:#999;margin-bottom:0.3rem">Cookies</div>';
                         d2.cookies.forEach(ck => {
-                            html += '<div class="cookie-item ' + (ck.ok ? 'cookie-ok' : 'cookie-warn') + '">' + (ck.ok ? '✅ ' : '⚠️ ') + escHtml(ck.text) + '</div>';
+                            html += '<div class="cookie-item ' + (ck.ok ? 'cookie-ok' : 'cookie-warn') + '">' + (ck.ok ? '' : '') + escHtml(ck.text) + '</div>';
                         });
                     }
                     if (d2.tips && d2.tips.length > 0) {
                         html += '<div style="margin-top:0.6rem;border-top:1px solid rgba(0,0,0,0.05);padding-top:0.6rem">';
-                        d2.tips.forEach(t => { html += '<div class="hdr-tip">💡 ' + escHtml(t) + '</div>'; });
+                        d2.tips.forEach(t => { html += '<div class="hdr-tip">' + escHtml(t) + '</div>'; });
                         html += '</div>';
                     }
                 }
@@ -1487,7 +1481,7 @@
                 if (cats.email.length > 0) {
                     html += '<div style="margin-bottom:0.8rem"><div style="font-size:0.75rem;font-weight:700;color:#8b7cf8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem">EMAIL SECURITY</div>';
                     cats.email.forEach(e => {
-                        const icon = e.type === 'ok' || e.type === 'good' ? '✅' : e.type === 'miss' ? '❌' : e.type === 'warn' ? '⚠️' : 'ℹ️';
+                        const icon = e.type === 'ok' || e.type === 'good' ? '' : e.type === 'miss' ? '' : e.type === 'warn' ? '' : '';
                         const col  = e.type === 'good' || e.type === 'ok' ? '#22a06b' : e.type === 'miss' ? '#dc2626' : e.type === 'warn' ? '#d97706' : '#555';
                         html += '<div class="hdr-item"><span class="hdr-icon">' + icon + '</span><span class="hdr-val" style="color:' + col + '">' + escHtml(e.text) + '</span></div>';
                     });
@@ -1498,7 +1492,7 @@
                     const robotLines = cats.robots.filter(r => r.type === 'line');
                     const robotOther = cats.robots.filter(r => r.type !== 'line');
                     robotOther.forEach(r => {
-                        const icon = r.type === 'ok' ? '✅' : r.type === 'warn' ? '⚠️' : 'ℹ️';
+                        const icon = r.type === 'ok' ? '' : r.type === 'warn' ? '' : '';
                         html += '<div class="hdr-item"><span class="hdr-icon">' + icon + '</span><span class="hdr-val">' + escHtml(r.text) + '</span></div>';
                     });
                     if (robotLines.length > 0) {
@@ -1511,7 +1505,7 @@
                 if (cats.files && cats.files.length > 0) {
                     html += '<div style="margin-bottom:0.8rem"><div style="font-size:0.75rem;font-weight:700;color:#8b7cf8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem">FILE SENSIBILI</div>';
                     cats.files.forEach(f => {
-                        const icon = f.type === 'warn' ? '🚨' : f.type === 'good' || f.type === 'ok' ? '✅' : f.type === 'summary' ? '📊' : 'ℹ️';
+                        const icon = f.type === 'warn' ? '' : f.type === 'good' || f.type === 'ok' ? '' : f.type === 'summary' ? '' : '';
                         const col  = f.type === 'warn' ? '#dc2626' : f.type === 'good' || f.type === 'ok' ? '#22a06b' : '#555';
                         html += '<div class="hdr-item"><span class="hdr-icon">' + icon + '</span><span class="hdr-val" style="color:' + col + ';font-size:0.82rem">' + escHtml(f.text) + '</span></div>';
                     });
@@ -1520,7 +1514,7 @@
                 if (cats.redir.length > 0) {
                     html += '<div style="margin-bottom:0.8rem"><div style="font-size:0.75rem;font-weight:700;color:#8b7cf8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem">REDIRECT CHAIN</div>';
                     cats.redir.forEach(r => {
-                        const icon = r.type === 'ok' ? '✅' : r.type === 'warn' ? '⚠️' : r.type === 'step' ? '↪' : 'ℹ️';
+                        const icon = r.type === 'ok' ? '' : r.type === 'warn' ? '' : r.type === 'step' ? '↪' : '';
                         const col  = r.type === 'ok' ? '#22a06b' : r.type === 'warn' ? '#dc2626' : '#555';
                         html += '<div class="hdr-item"><span class="hdr-icon">' + icon + '</span><span class="hdr-val" style="color:' + col + '">' + escHtml(r.text) + '</span></div>';
                     });
@@ -1528,7 +1522,7 @@
                 }
                 if (cats.tip.length > 0) {
                     html += '<div style="border-top:1px solid rgba(0,0,0,0.05);padding-top:0.5rem">';
-                    cats.tip.forEach(t => { html += '<div class="hdr-tip">💡 ' + escHtml(t.text) + '</div>'; });
+                    cats.tip.forEach(t => { html += '<div class="hdr-tip">' + escHtml(t.text) + '</div>'; });
                     html += '</div>';
                 }
                 if (!html) html = '<span class="waiting">Nessun dato aggiuntivo.</span>';

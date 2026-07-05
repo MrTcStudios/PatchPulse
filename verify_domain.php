@@ -14,6 +14,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . "/lang/lang.php";
+require_once __DIR__ . "/security/session_guard.php";
 require_once __DIR__ . "/security/rate_limiter.php";
 
 try {
@@ -40,6 +41,9 @@ try {
 
     // Input
     $rawInput = file_get_contents('php://input');
+    if (strlen($rawInput) > 2048) {
+        throw new Exception(t('ss.payload_too_big', false), 400);
+    }
     $input = json_decode($rawInput, true);
     if (!is_array($input)) {
         throw new Exception(t('vd.json_invalid', false), 400);
@@ -60,20 +64,16 @@ try {
         throw new Exception(t('vd.internal_error', false), 500);
     }
 
+    if (!pp_session_is_valid($conn)) {
+        throw new Exception(t('vd.unauthorized', false), 401);
+    }
+
     $userId = (int)$_SESSION['user_id'];
 
-    // ── Rate limiting anti-abuso: conta OGNI tentativo PRIMA del lookup DNS ──
-    // Questo endpoint fa una query DNS-over-HTTPS in uscita per ogni richiesta:
-    // senza limite e' la leva ideale per saturare i worker PHP. Limitiamo per
-    // utente (identita' forte, non falsificabile) e per IP (difesa in profondita').
-    // Fail-open su errore DB: una verifica legittima non deve fallire per il limiter.
-    $rlWindow = 600; // 10 minuti
-    $rlIp     = rl_client_ip();
-    $okUser = rl_consume($conn, 'domain.verify', rl_identifier('domain.verify.user', (string)$userId), 15, $rlWindow);
-    $okIp   = rl_consume($conn, 'domain.verify', rl_identifier('domain.verify.ip', $rlIp), 40, $rlWindow);
-    if (!$okUser || !$okIp) {
-        $conn->close();
-        throw new Exception(t('vd.too_many', false), 429);
+    // Rate limit persistente per utente: ogni POST genera fino a 2 richieste
+    $retryAfter = 0;
+    if (!rl_consume($conn, 'domain.verify', rl_identifier((string)$userId), 10, 600, $retryAfter)) {
+        throw new Exception(t('flash.too_many_requests', false), 429);
     }
 
     // Recupera il token atteso dal DB
@@ -115,7 +115,7 @@ try {
         'http' => [
             'header'  => "Accept: application/json\r\n",
             'method'  => 'GET',
-            'timeout' => 5,
+            'timeout' => 10,
         ],
     ]);
 
@@ -130,7 +130,7 @@ try {
             'http' => [
                 'header'  => "Accept: application/dns-json\r\n",
                 'method'  => 'GET',
-                'timeout' => 5,
+                'timeout' => 10,
             ],
         ]);
         $dohResponse = @file_get_contents($dohUrl, false, $context);
@@ -169,14 +169,14 @@ try {
         exit();
     }
 
-    // Verificato! Aggiorna il DB (nessuna scadenza — ri-verifica live prima di ogni scan)
+    // Verificato. Aggiorna il DB (nessuna scadenza — ri-verifica live prima di ogni scan)
     $update = $conn->prepare("UPDATE verified_domains SET verified_at = NOW() WHERE id = ?");
     $update->bind_param("i", $domainId);
     $update->execute();
     $update->close();
 
     // Log
-    $userIp = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'unknown';
+    $userIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     if (!filter_var($userIp, FILTER_VALIDATE_IP)) $userIp = 'unknown';
 
     $log = $conn->prepare("INSERT INTO activity_logs (user_id, action, ip_address) VALUES (?, ?, ?)");

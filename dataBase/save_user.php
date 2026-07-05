@@ -145,8 +145,26 @@ if (!$agree_terms) {
     exit();
 }
 
+// GC probabilistico: elimina le registrazioni mai confermate e scadute da >7
+// giorni, così l'indirizzo torna libero anche senza una ri-registrazione.
+if (random_int(1, 50) === 1) {
+    @$conn->query("DELETE FROM users WHERE is_confirmed = FALSE
+                   AND confirmation_expires IS NOT NULL
+                   AND confirmation_expires < DATE_SUB(NOW(), INTERVAL 7 DAY)");
+}
+
 // ── Check email esistente ──
-$stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+// Se l'email è occupata da una registrazione MAI confermata e ormai scaduta,
+// libera la riga e lascia proseguire la nuova registrazione (anti-squatting).
+// Fail-open pre-migration (confirmation_expiry.sql): comportamento invariato.
+$stmt = @$conn->prepare(
+    "SELECT id, is_confirmed,
+            (confirmation_expires IS NOT NULL AND confirmation_expires < NOW()) AS conf_expired
+     FROM users WHERE email = ?"
+);
+if (!$stmt) {
+    $stmt = $conn->prepare("SELECT id, TRUE, FALSE FROM users WHERE email = ?");
+}
 if (!$stmt) {
     $_SESSION['registration_message'] = "flash.internal_error";
     header("Location: ../log-reg.php");
@@ -154,24 +172,45 @@ if (!$stmt) {
 }
 $stmt->bind_param("s", $email);
 $stmt->execute();
-$stmt->store_result();
+$stmt->bind_result($existingId, $existingConfirmed, $confExpired);
+$found = $stmt->fetch();
+$stmt->close();
 
-if ($stmt->num_rows > 0) {
-    $_SESSION['registration_message'] = "flash.register.email_sent";
-    $stmt->close();
+if ($found) {
+    if (!$existingConfirmed && $confExpired) {
+        // Registrazione fantasma scaduta: rimuovila e prosegui con quella nuova.
+        $del = $conn->prepare("DELETE FROM users WHERE id = ? AND is_confirmed = FALSE");
+        if ($del) {
+            $del->bind_param("i", $existingId);
+            $del->execute();
+            $del->close();
+        }
+    } else {
+        // Risposta identica al flusso normale → nessuna enumerazione.
+        $conn->close();
+        $_SESSION['registration_message'] = "flash.register.email_sent";
+        header("Location: ../log-reg.php");
+        exit();
+    }
+}
+
+// ── Registrazione ──
+$hashed_password = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+$confirmation_token = bin2hex(random_bytes(32));
+$confirmation_token_hash = hash('sha256', $confirmation_token);
+
+// Scadenza conferma 48h (confirmation_expiry.sql). Fail-open pre-migration:
+$stmt = @$conn->prepare("INSERT INTO users (name, email, password, agree_terms, is_confirmed, confirmation_token, confirmation_expires) VALUES (?, ?, ?, ?, FALSE, ?, DATE_ADD(NOW(), INTERVAL 48 HOUR))");
+if (!$stmt) {
+    $stmt = $conn->prepare("INSERT INTO users (name, email, password, agree_terms, is_confirmed, confirmation_token) VALUES (?, ?, ?, ?, FALSE, ?)");
+}
+if (!$stmt) {
+    $_SESSION['registration_message'] = "flash.register.failed";
     $conn->close();
     header("Location: ../log-reg.php");
     exit();
 }
-$stmt->close();
-
-// ── Registrazione ──
-// Hash con bcrypt cost 12
-$hashed_password = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
-$confirmation_token = bin2hex(random_bytes(32));
-
-$stmt = $conn->prepare("INSERT INTO users (name, email, password, agree_terms, is_confirmed, confirmation_token) VALUES (?, ?, ?, ?, FALSE, ?)");
-$stmt->bind_param("sssis", $name, $email, $hashed_password, $agree_terms, $confirmation_token);
+$stmt->bind_param("sssis", $name, $email, $hashed_password, $agree_terms, $confirmation_token_hash);
 
 if (!$stmt->execute()) {
     $_SESSION['registration_message'] = "flash.register.failed";

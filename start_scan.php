@@ -45,8 +45,6 @@ try {
     }
 
     // ── Rate Limiting persistente per utente (DB) ──
-    // Era basato su $_SESSION e bypassabile con logout/login o reset cookie:
-    // ora il contatore vive nel DB legato all'user_id.
     $userId         = (int)$_SESSION['user_id'];
     $now            = time();
     $scanAction     = 'scan.start';
@@ -66,11 +64,6 @@ try {
         throw new Exception(t('ss.too_many_scans', false), 429);
     }
 
-    // ── Anti-DoS: limita i TENTATIVI, non solo le scansioni riuscite ──
-    // Il limite sopra conta solo i successi (rl_record gira a fine flusso): da solo
-    // non ferma un flood di richieste che falliscono la validazione e non vengono
-    // mai registrate. Questo secondo limite conta OGNI tentativo autenticato, prima
-    // del lookup DNS live. Per-utente (identita' forte) + per-IP (difesa in profondita').
     $attemptIp     = rl_client_ip();
     $okAttemptUser = rl_consume($rlConn, 'scan.attempt', rl_identifier('scan.attempt.user', (string)$userId), 30, $rateWindow);
     $okAttemptIp   = rl_consume($rlConn, 'scan.attempt', rl_identifier('scan.attempt.ip', $attemptIp), 60, $rateWindow);
@@ -92,7 +85,7 @@ try {
 
     $target = trim($input['target'] ?? '');
 
-    // Validazione URL rigorosa
+    // Validazione URL
     if (!filter_var($target, FILTER_VALIDATE_URL)) {
         throw new Exception(t('ss.url_invalid', false), 400);
     }

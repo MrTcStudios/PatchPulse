@@ -14,6 +14,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . "/lang/lang.php";
+require_once __DIR__ . "/security/session_guard.php";
 require_once __DIR__ . "/security/rate_limiter.php";
 
 try {
@@ -82,18 +83,28 @@ try {
         throw new Exception(t('vd.internal_error', false), 500);
     }
 
+    if (!pp_session_is_valid($conn)) {
+        throw new Exception(t('vd.unauthorized', false), 401);
+    }
+
     $userId = (int)$_SESSION['user_id'];
 
-    // ── Rate limiting anti-abuso: conta OGNI tentativo PRIMA dell'INSERT ──
-    // Senza limite, variando l'hostname (sub1, sub2, ...) si gonfia la tabella
-    // verified_domains all'infinito. Per-utente + per-IP, fail-open su errore DB.
-    $rlWindow = 600; // 10 minuti
-    $rlIp     = rl_client_ip();
-    $okUser = rl_consume($conn, 'domain.generate', rl_identifier('domain.generate.user', (string)$userId), 15, $rlWindow);
-    $okIp   = rl_consume($conn, 'domain.generate', rl_identifier('domain.generate.ip', $rlIp), 40, $rlWindow);
-    if (!$okUser || !$okIp) {
-        $conn->close();
-        throw new Exception(t('vd.too_many', false), 429);
+    // Rate limit persistente per utente: senza questo, ogni POST con un dominio
+    $retryAfter = 0;
+    if (!rl_consume($conn, 'domain.generate', rl_identifier((string)$userId), 10, 600, $retryAfter)) {
+        throw new Exception(t('flash.too_many_requests', false), 429);
+    }
+
+    $cap = $conn->prepare("SELECT COUNT(*) FROM verified_domains WHERE user_id = ? AND verified_at IS NULL");
+    if ($cap) {
+        $cap->bind_param("i", $userId);
+        $cap->execute();
+        $cap->bind_result($pendingCount);
+        $cap->fetch();
+        $cap->close();
+        if ((int)$pendingCount >= 20) {
+            throw new Exception(t('flash.too_many_requests', false), 429);
+        }
     }
 
     // Controlla se il dominio è già verificato e non scaduto

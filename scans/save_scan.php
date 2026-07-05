@@ -37,22 +37,6 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = (int)$_SESSION['user_id'];
 
-// Rate limit persistente per user_id: max 10 salvataggi / 10 min.
-// Senza questo, un utente loggato può riempire la tabella scans in pochi minuti.
-$saveAction = 'browser_scan.save';
-$saveId     = rl_identifier((string)$user_id);
-$retryAfter = 0;
-if (!rl_consume($conn, $saveAction, $saveId, 10, 600, $retryAfter)) {
-    http_response_code(429);
-    header('Retry-After: ' . max(1, $retryAfter));
-    echo json_encode([
-        'success' => false,
-        'error'   => t('ss.too_many_scans', false),
-        'code'    => 'rate_limited',
-    ]);
-    exit;
-}
-
 // Cap dimensione body (anti-OOM): 65 KB. 39 campi × 1000 char in chiaro stanno
 // largamente sotto.
 $contentLen = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
@@ -82,6 +66,23 @@ if (!isset($input['csrf_token']) || !isset($input['data'])) {
 $csrfToken = $input['csrf_token'];
 if (empty($csrfToken) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
     pp_save_error(403, 'vd.csrf_invalid');
+}
+
+// Rate limit persistente per user_id: max 10 salvataggi / 10 min. Applicato DOPO
+// la verifica CSRF, così una richiesta senza token valido non consuma la quota
+// dell'utente. Senza questo limite la tabella scans si riempirebbe in pochi minuti.
+$saveAction = 'browser_scan.save';
+$saveId     = rl_identifier((string)$user_id);
+$retryAfter = 0;
+if (!rl_consume($conn, $saveAction, $saveId, 10, 600, $retryAfter)) {
+    http_response_code(429);
+    header('Retry-After: ' . max(1, $retryAfter));
+    echo json_encode([
+        'success' => false,
+        'error'   => t('ss.too_many_scans', false),
+        'code'    => 'rate_limited',
+    ]);
+    exit;
 }
 
 // Decodifica: base64 → JSON → array
@@ -142,7 +143,8 @@ $stmt->bind_param($types, $user_id, ...$encryptedValues);
 
 if ($stmt->execute()) {
     // Log attività
-    $user_ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'unknown';
+    // mod_remoteip mette l'IP reale del client (CF-Connecting-IP) in REMOTE_ADDR e rimuove l'header originale.
+    $user_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     if (!filter_var($user_ip, FILTER_VALIDATE_IP)) $user_ip = 'unknown';
     $log = $conn->prepare("INSERT INTO activity_logs (user_id, action, ip_address) VALUES (?, 'browser_scan_saved', ?)");
     $log->bind_param("is", $user_id, $user_ip);

@@ -12,6 +12,7 @@ session_start();
 
 require_once __DIR__ . "/../lang/lang.php";
 require_once __DIR__ . "/../security/rate_limiter.php";
+require_once __DIR__ . "/../security/session_guard.php";
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../log-reg.php");
@@ -58,6 +59,13 @@ if ($conn->connect_error) {
     exit();
 }
 
+// Sessione ancora valida? (invalidata da un eventuale cambio password altrove)
+if (!pp_session_is_valid($conn)) {
+    $conn->close();
+    header("Location: ../log-reg.php");
+    exit();
+}
+
 $user_id = (int)$_SESSION['user_id'];
 
 // Brute force protection: 3 tentativi falliti → lockout 30 min.
@@ -91,10 +99,12 @@ rl_clear_failures($conn, $delAction, $delIdentifier);
 
 // Genera token di eliminazione (32 bytes = 64 hex)
 $token = bin2hex(random_bytes(32));
-$expires_at = date("Y-m-d H:i:s", strtotime("+1 hour"));
+// Nel DB va solo l'hash SHA-256; il valore in chiaro vive solo nel link email.
+$tokenHash = hash('sha256', $token);
 
-$stmt = $conn->prepare("UPDATE users SET deletion_token = ?, deletion_token_expires = ? WHERE id = ?");
-$stmt->bind_param("ssi", $token, $expires_at, $user_id);
+// Scadenza calcolata da MySQL (stesso orologio di NOW() usato in confirm_deletion.php).
+$stmt = $conn->prepare("UPDATE users SET deletion_token = ?, deletion_token_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?");
+$stmt->bind_param("si", $tokenHash, $user_id);
 
 if (!$stmt->execute()) {
     $_SESSION['account_delete_message'] = "flash.internal_error_retry";
@@ -123,7 +133,7 @@ try {
     $mail->Port       = 587;
     $mail->Timeout    = 10;
 
-    $mail->setFrom(getenv('SMTP_FROM') ?: 'support@email.mrtc.cc', 'PatchPulse');
+    $mail->setFrom(getenv('SMTP_FROM') ?: 'support@patchpulse.org', 'PatchPulse');
     $mail->addAddress($user_email);
 
     $mail->isHTML(true);

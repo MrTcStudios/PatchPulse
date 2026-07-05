@@ -12,6 +12,7 @@ session_start();
 
 require_once __DIR__ . "/../lang/lang.php";
 require_once __DIR__ . "/../security/rate_limiter.php";
+require_once __DIR__ . "/../security/session_guard.php";
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../log-reg.php");
@@ -40,6 +41,12 @@ $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
 if ($conn->connect_error) {
     $_SESSION['email_change_message'] = "flash.internal_error";
     header("Location: ../account.php");
+    exit();
+}
+
+if (!pp_session_is_valid($conn)) {
+    $conn->close();
+    header("Location: ../log-reg.php");
     exit();
 }
 
@@ -114,19 +121,26 @@ $check_stmt->bind_param("s", $new_email);
 $check_stmt->execute();
 $check_stmt->store_result();
 if ($check_stmt->num_rows > 0) {
-    $_SESSION['email_change_message'] = "flash.email.taken";
     $check_stmt->close();
     $conn->close();
+    $_SESSION['email_change_message'] = "flash.email.sent_confirm";
     header("Location: ../account.php");
     exit();
 }
 $check_stmt->close();
 
-// Genera token di conferma
-$confirmation_token = bin2hex(random_bytes(32));
+// Genera token di conferma (colonne dedicate + scadenza 1h; nel DB solo l'hash)
+$emailChangeToken     = bin2hex(random_bytes(32));         // valore in chiaro → link email
+$emailChangeTokenHash = hash('sha256', $emailChangeToken); // valore memorizzato nel DB
 
-$update_stmt = $conn->prepare("UPDATE users SET temp_email = ?, confirmation_token = ? WHERE id = ?");
-$update_stmt->bind_param("ssi", $new_email, $confirmation_token, $user_id);
+$update_stmt = $conn->prepare("UPDATE users SET temp_email = ?, email_change_token = ?, email_change_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?");
+if (!$update_stmt) {
+    $_SESSION['email_change_message'] = "flash.internal_error_retry";
+    $conn->close();
+    header("Location: ../account.php");
+    exit();
+}
+$update_stmt->bind_param("ssi", $new_email, $emailChangeTokenHash, $user_id);
 
 if (!$update_stmt->execute()) {
     $_SESSION['email_change_message'] = "flash.internal_error_retry";
@@ -138,7 +152,7 @@ if (!$update_stmt->execute()) {
 $update_stmt->close();
 
 // Log attività
-$user_ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'unknown';
+$user_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 if (!filter_var($user_ip, FILTER_VALIDATE_IP)) {
     $user_ip = 'unknown';
 }
@@ -150,7 +164,7 @@ $log_stmt->close();
 
 // Invia email di conferma
 $appDomain = getenv('APP_DOMAIN') ?: 'patchpulse.org';
-$confirmation_link = "https://{$appDomain}/dataBase/confirm_email_change.php?token=" . urlencode($confirmation_token);
+$confirmation_link = "https://{$appDomain}/dataBase/confirm_email_change.php?token=" . urlencode($emailChangeToken);
 
 $mail = new PHPMailer(true);
 try {
@@ -175,6 +189,29 @@ try {
 } catch (Exception $e) {
     error_log("PHPMailer error: " . $mail->ErrorInfo);
     $_SESSION['email_change_message'] = "flash.email.send_failed";
+}
+
+try {
+    $notice = new PHPMailer(true);
+    $notice->isSMTP();
+    $notice->Host       = getenv('SMTP_HOST') ?: 'smtp-relay.brevo.com';
+    $notice->SMTPAuth   = true;
+    $notice->Username   = getenv('SMTP_USER');
+    $notice->Password   = getenv('SMTP_PASS');
+    $notice->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+    $notice->Port       = 587;
+    $notice->Timeout    = 10;
+
+    $notice->setFrom(getenv('SMTP_FROM') ?: 'support@patchpulse.org', 'PatchPulse');
+    $notice->addAddress($db_email);
+
+    $notice->isHTML(true);
+    $notice->Subject = t('mail.change_email.notice_subject', false);
+    $notice->Body    = str_replace('{0}', htmlspecialchars($new_email, ENT_QUOTES, 'UTF-8'), t('mail.change_email.notice_body', false));
+
+    $notice->send();
+} catch (Exception $e) {
+    error_log("Email change notice error: " . $notice->ErrorInfo);
 }
 
 $conn->close();

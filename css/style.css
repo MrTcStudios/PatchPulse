@@ -4,7 +4,7 @@
    Link: <link rel="stylesheet" href="style.css">
    ===================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap');
+@import url('fonts/legacy.css');
 
 /* ───────── RESET & VARIABLES ───────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }

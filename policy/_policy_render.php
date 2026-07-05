@@ -1,16 +1,4 @@
 <?php
-// policy/_policy_render.php
-// Shared helper: renders a policy data structure as safe HTML.
-//
-// Markup convention in the data file:
-//   {strong}...{/strong}        → <strong>...</strong>
-//   {a:href}label{/a}           → <a href="href">label</a>
-//
-// We HTML-escape the raw text first, then convert only the whitelisted markers.
-// This means any literal '<' or '&' in the source becomes its entity, and only
-// {strong}/{a:...} sequences ever produce live HTML. href is restricted to a
-// safe-URL pattern (no javascript:, no data:, etc.).
-
 if (!defined('PP_POLICY_RENDER_LOADED')) {
     define('PP_POLICY_RENDER_LOADED', 1);
 
