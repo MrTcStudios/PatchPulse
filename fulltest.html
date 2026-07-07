@@ -20,9 +20,17 @@ window.__onInstalled = null;
 window.__storageChanged = null;
 
 function makeStorageArea(name) {
+  let firstGet = true;
   return {
     _d: {},
     async get(keys) {
+      /* Il PRIMO get di storage.local e' ritardato di proposito: simula il
+         risveglio dell'event page con la navigazione che arriva PRIMA che
+         loadDomains() abbia finito (sezione R). */
+      if (name === "local" && firstGet) {
+        firstGet = false;
+        await new Promise((r) => setTimeout(r, 40));
+      }
       if (typeof keys === "string") keys = [keys];
       const out = {};
       for (const k of keys) if (k in this._d) out[k] = this._d[k];
@@ -30,7 +38,7 @@ function makeStorageArea(name) {
     },
     async set(obj) {
       const changes = {};
-      for (const k in obj) { changes[k] = { newValue: obj[k] }; this._d[k] = obj[k]; }
+      for (const k in obj) { changes[k] = { oldValue: this._d[k], newValue: obj[k] }; this._d[k] = obj[k]; }
       if (name === "local" && window.__storageChanged) window.__storageChanged(changes, "local");
     }
   };
@@ -116,6 +124,20 @@ window.makePageStub = function (opts) {
   }
 
   try {
+    /* ═════════ R. RISVEGLIO EVENT PAGE ═════════
+       Lo stub ritarda il primo storage.get: questa navigazione arriva mentre
+       loadDomains() e' ancora in volo, come dopo un risveglio reale.
+       handleNavigation deve ASPETTARLO (fix v1.4.1), non correre con
+       l'indice vuoto lasciando passare il sosia. */
+    document.title = "sezione R";
+    out.push("===== R. RISVEGLIO EVENT PAGE =====");
+    ok(officialIndex.length === 0, "pre-condizione: la navigazione arriva PRIMA che l'indice sia pronto");
+    await window.__onNav({ frameId: 0, url: "https://rnicrosoft.com/wake", tabId: 99 });
+    ok(window.__updates.length === 1, "navigazione durante il caricamento -> comunque bloccata (await ready)");
+    window.__updates.length = 0;
+    browser.storage.local._d = {};   // azzera contatori e lista della prova
+    await loadDomains();
+
     await until(() => typeof officialIndex !== "undefined" && officialIndex.length > 0);
 
     /* ═════════ A. UNIT ═════════ */
@@ -152,6 +174,14 @@ window.makePageStub = function (opts) {
     ok(tldOf("barclays.co.uk") === "co.uk", "tldOf: multi-part");
     ok(punycodeDecode("bcher-kva") === "bücher", "punycode: bücher");
     ok(toAsciiSkeleton("xn--pple-43d.com") === "apple.com", "skeleton: cirillico -> apple.com");
+    ok(foldDiacritics("pàypal.com") === "paypal.com", "fold: accento latino tolto");
+    ok(foldDiacritics("gøogle.com") === "google.com", "fold: ø -> o (mappa manuale)");
+    ok(foldDiacritics("straße.de") === "strasse.de", "fold: ß -> ss");
+    ok(foldDiacritics("mañana.com") === "manana.com", "fold: ñ -> n");
+    ok(looksLikeDomain("esempio.com") && looksLikeDomain("xn--bcher-kva.de") && looksLikeDomain("a.b.gov.it"),
+       "looksLikeDomain: accetta domini validi");
+    ok(!looksLikeDomain("a..b.com") && !looksLikeDomain("-foo.com") && !looksLikeDomain("foo-.com") && !looksLikeDomain("localhost"),
+       "looksLikeDomain: rifiuta etichette vuote/trattini esterni/senza TLD");
 
     /* dizionari i18n: stesse chiavi in IT e EN, sostituzione $D$ */
     const kIt = Object.keys(I18N.it), kEn = Object.keys(I18N.en);
@@ -240,7 +270,18 @@ window.makePageStub = function (opts) {
       ["pаypаl.com","latino+cirillico misti (а)"],
       ["bаnca-intеsа.com","brand non in lista, script misti"],
       ["lоginseсure.net","script misti senza brand noto"],
-      ["xn--80ak6aa92e.com","аррӏе cirillico completo (omografo)"]
+      ["xn--80ak6aa92e.com","аррӏе cirillico completo (omografo)"],
+      // v1.4.1: omografi latini accentati (piega NFKD, solo uguaglianza esatta)
+      ["pàypal.com","omografo latino accentato (à)"],
+      ["páypal.com","accento acuto"],
+      ["amazõn.com","tilde su o"],
+      ["gøogle.com","ø -> o (mappa manuale)"],
+      ["mícrosoft.de","accento su ccTLD (regola brand)"],
+      ["pàypal.co.za","accento su TLD estero multi-livello"],
+      // v1.4.1: trattini aggiunti al brand su TLD diverso (prima passavano)
+      ["pay-pal.de","trattino su ccTLD (fix v1.4.1)"],
+      ["g-mail.de","trattino su gmail + ccTLD"],
+      ["we-transfer.de","trattino su ccTLD"]
     ];
     for (const [h, why] of attacks) {
       const r = findImpersonation(h);
@@ -307,6 +348,10 @@ window.makePageStub = function (opts) {
       "company-blog.weebly.com","mio-sito.netlify.app",
       // script misti: domini mono-alfabeto / IDN latino legittimi -> NON segnalare
       "xn--d1acufc.xn--p1ai","mañana.com","café.fr","müller.de","façade.com","købn.dk",
+      // v1.4.1: la piega dei diacritici NON deve creare falsi positivi
+      "nestlé.com","señor.es","età.it",
+      // v1.4.1: trattini — direzione-only: ufficiale CON trattino, varianti legittime
+      "deutsche-bank.com","creditagricole.fr",
       // typo su TLD spazzatura: brand corti / parole comuni su quei TLD -> niente FP da dist-1
       "info.tk","blog.xyz","news.top","my-app.pages.dev"
     ];
@@ -361,11 +406,27 @@ window.makePageStub = function (opts) {
     await nav("https://gogle.com/b");
     ok(upd.length === 3, "dopo 'mi fido' non viene piu' bloccato");
 
+    /* v1.4.1: il bypass ha una SCADENZA (15 min), non vale tutta la sessione */
+    const bypassStore = (await browser.storage.session.get("bypass")).bypass || {};
+    ok(typeof bypassStore["rnicrosoft.com"] === "number" && bypassStore["rnicrosoft.com"] > Date.now(),
+       "bypass: voce salvata con scadenza futura (TTL)");
+    bypassStore["rnicrosoft.com"] = Date.now() - 1;   // simula il tempo passato
+    await browser.storage.session.set({ bypass: bypassStore });
+    const uTtl = upd.length;
+    await nav("https://rnicrosoft.com/after-ttl");
+    ok(upd.length === uTtl + 1, "bypass scaduto -> il sosia viene RIbloccato");
+    ok(!("rnicrosoft.com" in ((await browser.storage.session.get("bypass")).bypass || {})),
+       "bypass scaduto -> voce ripulita dallo storage");
+
     const lenBefore = officialDomains.length;
     await window.__onMsg({ type: "addOfficial", domain: "Bad Domain!!" });
     ok(officialDomains.length === lenBefore, "addOfficial rifiuta dominio non valido");
     await window.__onMsg({ type: "addOfficial", domain: "gogle.com" });
     ok(officialDomains.length === lenBefore, "addOfficial ignora duplicato");
+    await window.__onMsg({ type: "addOfficial", domain: "a..b.com" });
+    ok(officialDomains.length === lenBefore, "addOfficial rifiuta etichette vuote (a..b.com)");
+    await window.__onMsg({ type: "addOfficial", domain: "-evil.com" });
+    ok(officialDomains.length === lenBefore, "addOfficial rifiuta trattino iniziale");
 
     const u0 = upd.length;
     await nav("https://paypa1.com/x", 1);
@@ -410,6 +471,29 @@ window.makePageStub = function (opts) {
        && officialDomains.length === DEFAULT_DOMAINS.length + 1,
        "merge update: dominio utente conservato + " + DEFAULT_DOMAINS.length + " default aggiunti");
     ok(browser.storage.local._d.defaultsVersion === DEFAULTS_VERSION, "defaultsVersion aggiornata");
+
+    /* v1.4.1: i default rimossi dall'utente NON risorgono al bump di versione */
+    browser.storage.local._d = {
+      officialDomains: DEFAULT_DOMAINS.filter(d => d !== "google.com"),
+      defaultsVersion: 1,
+      removedDefaults: ["google.com"]
+    };
+    await loadDomains();
+    ok(!officialDomains.includes("google.com"), "merge update: default rimosso dall'utente resta rimosso");
+    ok(officialDomains.length === DEFAULT_DOMAINS.length - 1, "merge update: tutti gli altri default presenti");
+
+    /* la rimozione di un default via storage (percorso del popup) viene tracciata */
+    browser.storage.local._d = {};
+    await loadDomains();
+    await browser.storage.local.set({ officialDomains: officialDomains.filter(d => d !== "poste.it") });
+    await until(() => (browser.storage.local._d.removedDefaults || []).includes("poste.it"));
+    ok((browser.storage.local._d.removedDefaults || []).includes("poste.it"),
+       "rimozione di un default dal popup -> registrata in removedDefaults");
+    ok(!officialDomains.includes("poste.it"), "rimozione default -> indice aggiornato subito");
+    await window.__onMsg({ type: "addOfficial", domain: "poste.it" });
+    await until(() => !(browser.storage.local._d.removedDefaults || []).includes("poste.it"));
+    ok(!(browser.storage.local._d.removedDefaults || []).includes("poste.it"),
+       "ri-aggiunta del default -> tolto da removedDefaults (tornera' col merge)");
 
     const big = []; for (let i = 0; i < 5000; i++) big.push("dom" + i + ".com");
     browser.storage.local._d = { officialDomains: big, defaultsVersion: DEFAULTS_VERSION };
@@ -469,6 +553,9 @@ window.makePageStub = function (opts) {
     async function loadWarning(query, opts) {
       const res = await fetch("/warning/warning.html");
       let html = await res.text();
+      /* cache-bust degli script: la memory-cache dell'iframe puo' servire
+         versioni vecchie dei .js anche dopo un reload della pagina di test */
+      html = html.replace(/src="([^"]+\.js)"/g, 'src="$1?b=' + Date.now() + '"');
       const { stub, logs } = window.makePageStub(opts);
       const key = "__stub" + Math.random().toString(36).slice(2);
       window[key] = stub;
@@ -548,6 +635,7 @@ window.makePageStub = function (opts) {
     async function loadPopup(opts) {
       const res = await fetch("/popup/popup.html");
       let html = await res.text();
+      html = html.replace(/src="([^"]+\.js)"/g, 'src="$1?b=' + Date.now() + '"');
       const { stub, logs } = window.makePageStub(opts);
       const key = "__stub" + Math.random().toString(36).slice(2);
       window[key] = stub;
@@ -596,6 +684,12 @@ window.makePageStub = function (opts) {
     ok(d.getElementById("msg").className.includes("error"), "popup: input non valido -> errore");
     ok(popupStorage.officialDomains.length === 3, "popup: lista invariata dopo input non valido");
 
+    d.getElementById("domain-input").value = "a..b.com";
+    d.getElementById("add-btn").click();
+    await sleep(80);
+    ok(d.getElementById("msg").className.includes("error") && popupStorage.officialDomains.length === 3,
+       "popup: 'a..b.com' rifiutato (validazione condivisa looksLikeDomain)");
+
     d.getElementById("domain-input").value = "sub.shop.example.co.uk";
     d.getElementById("add-btn").click();
     await sleep(80);
@@ -616,6 +710,18 @@ window.makePageStub = function (opts) {
     ok(!popupStorage.officialDomains.includes("ebay.it"), "popup: rimozione con x funziona");
     p1.remove();
 
+    /* v1.4.1: il tetto MAX_DOMAINS vale anche per il popup (prima lo saltava) */
+    const bigList = []; for (let i = 0; i < MAX_DOMAINS; i++) bigList.push("d" + i + ".com");
+    const bigStore = { officialDomains: bigList };
+    let { f: p3 } = await loadPopup({ lang: "en-US", storage: bigStore, tabs: [] });
+    p3.contentDocument.getElementById("domain-input").value = "overflow.com";
+    p3.contentDocument.getElementById("add-btn").click();
+    await sleep(150);
+    ok(bigStore.officialDomains.length === MAX_DOMAINS
+       && p3.contentDocument.getElementById("msg").className.includes("error"),
+       "popup: tetto " + MAX_DOMAINS + " -> aggiunta rifiutata con messaggio");
+    p3.remove();
+
     let { f: p2 } = await loadPopup({ lang: "it-IT", storage: { officialDomains: ["google.com"] }, tabs: [] });
     ok(p2.contentDocument.querySelector(".tagline").textContent.includes("Protezione"), "popup IT: tagline in italiano");
     p2.contentDocument.getElementById("add-current").click();
@@ -630,6 +736,7 @@ window.makePageStub = function (opts) {
     async function loadOnboarding(opts) {
       const res = await fetch("/onboarding/onboarding.html");
       let html = await res.text();
+      html = html.replace(/src="([^"]+\.js)"/g, 'src="$1?b=' + Date.now() + '"');
       const { stub, logs } = window.makePageStub(opts);
       const key = "__stub" + Math.random().toString(36).slice(2);
       window[key] = stub;

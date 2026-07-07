@@ -8,6 +8,7 @@
      1. typo/omoglifi ASCII e trattini (distanza di Damerau-Levenshtein),
         su qualsiasi TLD se il nome e' un omoglifo del brand
      2. omografi Unicode/IDN (cirillico/greco/armeno, punycode xn--)
+     2b. omografi latini accentati (pàypal.com, gøogle.de) — solo match esatto
      3. dominio ufficiale incastonato nei sottodomini (paypal.com.evil.ru),
         anche con trattini (paypal.com-secure.ru) o su TLD sospetto
      4. nome del brand come sottodominio + parola sospetta (paypal.verify-x.ru)
@@ -20,8 +21,9 @@
    Funzioni e liste arrivano da lib/match.js.
    ============================================================ */
 
-const MAX_DOMAINS = 5000;     // tetto di sicurezza alla lista personalizzabile
+/* MAX_DOMAINS arriva da lib/match.js (condiviso con popup e onboarding). */
 const DEFAULTS_VERSION = 5;   // alza questo numero ogni volta che amplii DEFAULT_DOMAINS
+const DEFAULT_SET = new Set(DEFAULT_DOMAINS);
 
 let officialDomains = [];
 let officialIndex = [];   // pre-calcolo: [{ domain, norm, labels, brand, brandNorm }]
@@ -40,16 +42,18 @@ function rebuildIndex() {
 }
 
 async function loadDomains() {
-  const stored = await browser.storage.local.get(["officialDomains", "defaultsVersion"]);
+  const stored = await browser.storage.local.get(["officialDomains", "defaultsVersion", "removedDefaults"]);
   if (!stored.officialDomains || !stored.officialDomains.length) {
     // Primo avvio: parti dalla lista predefinita completa.
     officialDomains = [...DEFAULT_DOMAINS];
     await browser.storage.local.set({ officialDomains, defaultsVersion: DEFAULTS_VERSION });
   } else if ((stored.defaultsVersion || 1) < DEFAULTS_VERSION) {
     // Aggiornamento: aggiunge i nuovi domini predefiniti mancanti, SENZA
-    // rimuovere quelli aggiunti (o tenuti) dall'utente.
+    // rimuovere quelli aggiunti (o tenuti) dall'utente e SENZA far risorgere
+    // i default che l'utente aveva tolto apposta (registro removedDefaults).
+    const removed = new Set(stored.removedDefaults || []);
     const merged = new Set(stored.officialDomains);
-    for (const d of DEFAULT_DOMAINS) merged.add(d);
+    for (const d of DEFAULT_DOMAINS) if (!removed.has(d)) merged.add(d);
     officialDomains = [...merged];
     await browser.storage.local.set({ officialDomains, defaultsVersion: DEFAULTS_VERSION });
   } else {
@@ -59,11 +63,29 @@ async function loadDomains() {
 }
 
 browser.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.officialDomains) {
-    officialDomains = changes.officialDomains.newValue || [];
-    rebuildIndex();
-  }
+  if (area !== "local" || !changes.officialDomains) return;
+  const oldList = changes.officialDomains.oldValue || [];
+  officialDomains = changes.officialDomains.newValue || [];
+  rebuildIndex();
+  trackRemovedDefaults(oldList, officialDomains);
 });
+
+/* Registro dei default tolti dall'utente: senza, il merge di loadDomains li
+   farebbe risorgere a ogni bump di DEFAULTS_VERSION. La ri-aggiunta manuale
+   (popup o "Mi fido") toglie il dominio dal registro. */
+async function trackRemovedDefaults(oldList, newList) {
+  const oldSet = new Set(oldList);
+  const newSet = new Set(newList);
+  const goneDefaults = oldList.filter((d) => DEFAULT_SET.has(d) && !newSet.has(d));
+  const returned = newList.filter((d) => !oldSet.has(d));
+  if (!goneDefaults.length && !returned.length) return;
+  const { removedDefaults = [] } = await browser.storage.local.get("removedDefaults");
+  const rem = new Set(removedDefaults);
+  let dirty = false;
+  for (const d of goneDefaults) if (!rem.has(d)) { rem.add(d); dirty = true; }
+  for (const d of returned) if (rem.delete(d)) dirty = true;
+  if (dirty) await browser.storage.local.set({ removedDefaults: [...rem] });
+}
 
 /* ── 1) Typo/omoglifi: ufficiale UGUALE o MOLTO SIMILE a `candidate`.
    Soglia stretta sui nomi corti (1 modifica fino a 8 caratteri) per ridurre
@@ -74,14 +96,20 @@ function nearestOfficial(candidate) {
   // legittimi: NON li confrontiamo per distanza con brand ASCII (eviterebbe
   // mañana.com -> asana.com). Gli attacchi IDN passano via skeleton/script-misti.
   if (/[^\x00-\x7f]/.test(nc)) return null;
+  const cSld = candidate.split(".")[0];          // etichetta grezza, trattini INCLUSI
+  const cHasHyphen = cSld.includes("-");
   const cBrandRaw = brandOf(candidate);          // senza trattini, NON normalizzato
   const cBrandNorm = normalize(cBrandRaw);
   const cTld = tldOf(candidate);
   for (const o of officialIndex) {
     if (nc === o.norm) return o.domain;
-    // Nome identico solo DOPO la normalizzazione (paypa1, g00gle, rnicrosoft):
-    // e' un omoglifo del brand -> attacco, su QUALSIASI TLD (paypa1.co.za).
-    if (cBrandRaw !== o.brand && cBrandNorm === o.brandNorm) return o.domain;
+    // Nome identico solo DOPO la normalizzazione (paypa1, g00gle, rnicrosoft),
+    // O trattini AGGIUNTI a un brand che non li ha (pay-pal.de): e' un
+    // camuffamento del brand -> attacco, su QUALSIASI TLD (paypa1.co.za).
+    // Direzione-only: se e' l'UFFICIALE ad avere i trattini (deutsche-bank.de),
+    // la variante senza trattini su altro TLD resta una variante nazionale.
+    const hyphenDisguise = cHasHyphen && !o.labels[0].includes("-");
+    if ((cBrandRaw !== o.brand || hyphenDisguise) && cBrandNorm === o.brandNorm) return o.domain;
     // Brand davvero identico, TLD diverso (amazon.de vs amazon.it): variante
     // nazionale quasi sempre legittima -> niente confronto per distanza.
     // I TLD davvero pericolosi (.tk, .co, .cm...) li gestisce findTldAbuse.
@@ -248,6 +276,21 @@ function findImpersonation(hostname) {
       official = nearestOfficial(skel);
       if (official) return { domain: rawDomain, official, reason: "omografi" };
     }
+
+    // 2b) Omografo latino accentato (pàypal.com, gøogle.de, amazõn.com).
+    //     Qui SOLO uguaglianza esatta col protetto (dominio intero o brand),
+    //     MAI la distanza: altrimenti mañana.com tornerebbe a somigliare ad
+    //     asana.com, falso positivo gia' eliminato in v1.4.0.
+    const folded = registrableDomain(foldDiacritics(toAsciiSkeleton(hostname)));
+    if (folded !== rawDomain) {
+      const fNorm = normalize(folded);
+      const fBrandNorm = normalize(brandOf(folded));
+      for (const o of officialIndex) {
+        if (fNorm === o.norm || (fBrandNorm.length >= 3 && fBrandNorm === o.brandNorm)) {
+          return { domain: rawDomain, official: o.domain, reason: "omografi" };
+        }
+      }
+    }
   }
 
   // 3) Ufficiale incastonato nei sottodomini, anche con trattini al posto dei punti.
@@ -283,23 +326,35 @@ function findImpersonation(hostname) {
   return null;
 }
 
-/* ─── Domini sbloccati dall'utente ("vai comunque"), per la sessione ───
-   In storage.session: sopravvive allo spegnimento dell'event page. */
+/* ─── Domini sbloccati dall'utente ("vai comunque") ───
+   In storage.session: sopravvive allo spegnimento dell'event page (una
+   variabile in RAM si azzererebbe -> loop di ri-blocco). Ogni voce SCADE
+   dopo BYPASS_TTL_MS: "solo questa volta" deve valere poco, non fino alla
+   chiusura del browser. */
+const BYPASS_TTL_MS = 15 * 60 * 1000;
+
 async function allowDomain(domain) {
   const { bypass = {} } = await browser.storage.session.get("bypass");
-  bypass[domain] = true;
+  bypass[domain] = Date.now() + BYPASS_TTL_MS;
   await browser.storage.session.set({ bypass });
 }
 
 async function isBypassed(domain) {
   const { bypass = {} } = await browser.storage.session.get("bypass");
-  return Boolean(bypass[domain]);
+  const until = bypass[domain];
+  if (!until) return false;
+  if (Date.now() > until) {           // scaduto: pulisci e torna a proteggere
+    delete bypass[domain];
+    await browser.storage.session.set({ bypass });
+    return false;
+  }
+  return true;
 }
 
 /* Aggiunge un dominio ai protetti (pulsante "Mi fido"). Valida e mette un tetto. */
 async function addOfficial(domain) {
   if (typeof domain !== "string") return;
-  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) return;
+  if (!looksLikeDomain(domain)) return;
   if (officialDomains.includes(domain)) return;
   if (officialDomains.length >= MAX_DOMAINS) return;
   officialDomains = [...officialDomains, domain];
@@ -308,13 +363,22 @@ async function addOfficial(domain) {
 }
 
 /* Registra la minaccia: contatore totale + ultime 10 (mostrate nel popup).
-   Tutto in storage locale, nessun dato lascia il browser. */
-async function recordThreat(hit) {
-  const { blockedCount = 0, recentBlocked = [] } =
-    await browser.storage.local.get(["blockedCount", "recentBlocked"]);
-  recentBlocked.unshift({ d: hit.domain, o: hit.official, r: hit.reason, t: Date.now() });
-  if (recentBlocked.length > 10) recentBlocked.length = 10;
-  await browser.storage.local.set({ blockedCount: blockedCount + 1, recentBlocked });
+   Tutto in storage locale, nessun dato lascia il browser.
+   Le scritture sono in CODA una dietro l'altra: due navigazioni simultanee
+   farebbero un read-modify-write incrociato e perderebbero un conteggio. */
+let statsQueue = Promise.resolve();
+
+function recordThreat(hit) {
+  statsQueue = statsQueue
+    .then(async () => {
+      const { blockedCount = 0, recentBlocked = [] } =
+        await browser.storage.local.get(["blockedCount", "recentBlocked"]);
+      recentBlocked.unshift({ d: hit.domain, o: hit.official, r: hit.reason, t: Date.now() });
+      if (recentBlocked.length > 10) recentBlocked.length = 10;
+      await browser.storage.local.set({ blockedCount: blockedCount + 1, recentBlocked });
+    })
+    .catch((e) => console.error("[PatchPulse] statistiche:", e));
+  return statsQueue;
 }
 
 browser.runtime.onMessage.addListener((msg) => {
@@ -347,6 +411,12 @@ async function handleNavigation(details) {
   if (handledRecently.size > 200) handledRecently.clear();
   handledRecently.set(details.tabId, { url: details.url, ts: Date.now() });
 
+  // Aspetta il caricamento della lista: al risveglio dell'event page la
+  // navigazione che lo ha svegliato puo' arrivare PRIMA che loadDomains()
+  // abbia finito — senza questo await girerebbe con l'indice vuoto e il
+  // sosia passerebbe senza avviso.
+  await ready;
+
   const hit = findImpersonation(url.hostname);
   if (!hit) return;
   if (await isBypassed(hit.domain)) return;
@@ -376,4 +446,7 @@ browser.runtime.onInstalled.addListener((details) => {
   }
 });
 
-loadDomains();
+/* Parte subito a ogni avvio/risveglio dell'event page; handleNavigation la
+   ASPETTA (`await ready`) prima di decidere. Fallisce "aperto": in caso di
+   errore di storage la protezione non blocca la navigazione. */
+const ready = loadDomains().catch((e) => console.error("[PatchPulse] caricamento lista:", e));

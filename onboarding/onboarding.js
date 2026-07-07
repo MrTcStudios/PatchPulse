@@ -21,10 +21,12 @@ document.getElementById("version").textContent =
   document.getElementById("intro").textContent = t("ob_intro", String(n));
 })();
 
+let msgTimer = null;
 function showMsg(text, isError = false) {
   msgEl.textContent = text;
   msgEl.className = "msg " + (isError ? "error" : "ok");
-  setTimeout(() => { msgEl.textContent = ""; msgEl.className = "msg"; }, 2500);
+  clearTimeout(msgTimer);   // il timer del messaggio precedente non deve cancellare questo
+  msgTimer = setTimeout(() => { msgEl.textContent = ""; msgEl.className = "msg"; }, 2500);
 }
 
 /* Stessa pulizia dell'input usata dal popup: qualsiasi cosa -> dominio registrabile. */
@@ -35,7 +37,7 @@ function cleanDomain(value) {
     if (v.includes("://")) v = new URL(v).hostname;
   } catch (e) { /* ignora */ }
   v = v.split("/")[0].replace(/^www\./, "");
-  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(v)) return "";
+  if (!looksLikeDomain(v)) return "";
   return registrableDomain(v);
 }
 
@@ -44,6 +46,7 @@ async function addDomain(raw) {
   if (!domain) { showMsg(t("msgInvalid"), true); return; }
   const { officialDomains = [] } = await browser.storage.local.get("officialDomains");
   if (officialDomains.includes(domain)) { showMsg(t("msgAlready", domain)); return; }
+  if (officialDomains.length >= MAX_DOMAINS) { showMsg(t("msgLimit", String(MAX_DOMAINS)), true); return; }
   officialDomains.push(domain);
   await browser.storage.local.set({ officialDomains });
   showMsg(t("msgAdded", domain));

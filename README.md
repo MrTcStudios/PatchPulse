@@ -8,8 +8,8 @@ Part of the [PatchPulse](https://patchpulse.org) project.
 
 ## What it catches
 - **Typos / ASCII homoglyphs** — `rnicrosoft.com` (rn→m), `paypa1.com` (1→l), `gogle.com`, swapped letters (`googel.com`) — on any domain ending (`paypa1.co.za`, `g00gle.de`)
-- **Hyphen tricks** — `pay-pal.com`, `paypal.com-secure.ru`
-- **Unicode / IDN homographs** — Cyrillic, Greek, Armenian and extended-Latin letters that imitate Latin ones (curated UTS #39 subset, with `xn--` punycode decoding): `аpple.com`, `ıcloud.com`
+- **Hyphen tricks** — `pay-pal.com`, `pay-pal.de`, `paypal.com-secure.ru`
+- **Unicode / IDN homographs** — Cyrillic, Greek, Armenian and extended-Latin letters that imitate Latin ones (curated UTS #39 subset, with `xn--` punycode decoding): `аpple.com`, `ıcloud.com` — plus accented-Latin spoofs like `pàypal.com` or `gøogle.com` (diacritic folding, exact match only so `mañana.com`-style legit domains never trigger)
 - **An official domain used as a sub-domain** of another — `paypal.com.evil-login.ru`, `paypal.com.tk`
 - **Brand as sub-domain with phishing words** — `paypal.secure-verify.ru`
 - **Combo-squatting** — the brand plus phishing words in English and Italian (~140 words): `paypal-login.com`, `applesupport.com`, `amazon-verifica.com`, `dhl-tracking.com`
@@ -30,7 +30,7 @@ To see the warning, type a look-alike of a default domain in the address bar, e.
 ## How it works
 1. It runs in the background on every site you open.
 2. If the address is a look-alike, it shows a warning comparing the fake domain with the official one, **highlighting the deceptive letters** and explaining why.
-3. You decide: **go back**, **continue anyway** (for this session only), or **add it to your protected list** if you trust it. False alarms can be reported with one click — it opens a pre-filled email, nothing is ever sent automatically.
+3. You decide: **go back**, **continue anyway** (temporarily — the pass expires after ~15 minutes), or **add it to your protected list** if you trust it. False alarms can be reported with one click — it opens a pre-filled email, nothing is ever sent automatically.
 
 A welcome page on first install lets you add your own sites right away, and the popup shows your protected domains plus the **latest blocked threats** (with reason and date) and the extension version.
 
