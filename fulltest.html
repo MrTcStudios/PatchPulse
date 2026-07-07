@@ -182,6 +182,10 @@ window.makePageStub = function (opts) {
        "looksLikeDomain: accetta domini validi");
     ok(!looksLikeDomain("a..b.com") && !looksLikeDomain("-foo.com") && !looksLikeDomain("foo-.com") && !looksLikeDomain("localhost"),
        "looksLikeDomain: rifiuta etichette vuote/trattini esterni/senza TLD");
+    ok(hasMixedScript("g" + String.fromCharCode(0xab70) + "ogle.com") === true, "mixed-script: latino+cherokee minuscolo = true");
+    ok(hasMixedScript("pay" + String.fromCharCode(0x13df) + "al.com") === true, "mixed-script: latino+cherokee storico = true");
+    ok(GREEN_BRANDS.has("fortnine") && GREEN_BRANDS.has("paypay") && GREEN_BRANDS.has("discovery"),
+       "GREEN_BRANDS derivata dalla green-list");
 
     /* dizionari i18n: stesse chiavi in IT e EN, sostituzione $D$ */
     const kIt = Object.keys(I18N.it), kEn = Object.keys(I18N.en);
@@ -281,7 +285,41 @@ window.makePageStub = function (opts) {
       // v1.4.1: trattini aggiunti al brand su TLD diverso (prima passavano)
       ["pay-pal.de","trattino su ccTLD (fix v1.4.1)"],
       ["g-mail.de","trattino su gmail + ccTLD"],
-      ["we-transfer.de","trattino su ccTLD"]
+      ["we-transfer.de","trattino su ccTLD"],
+      // v1.5.0 ① typo del brand su TLD diverso (chiuso il limite storico)
+      ["steamcommunlty.ru","typo brand su TLD diverso (era il limite noto)"],
+      ["facebok.ru","omissione su TLD diverso"],
+      ["netfllx.de","i->l su ccTLD"],
+      ["linkedln.ru","i->l su TLD diverso"],
+      ["whatsap.ru","omissione su TLD diverso"],
+      // v1.5.0 ② cherokee nei range confusabili (script misti)
+      ["faceb" + String.fromCharCode(0xab84) + "ok.com","latino+cherokee minuscolo"],
+      ["pay" + String.fromCharCode(0x13a0) + "al.com","latino+cherokee blocco storico"],
+      // v1.5.0 ③ nuovi default: AI, DocuSign, corrieri, utility
+      ["docusign-login.com","combo su docusign"],
+      ["chatgtp.com","trasposizione di chatgpt"],
+      ["openai-verify.xyz","combo su openai"],
+      ["onedrive-login.com","combo su onedrive"],
+      ["chatgpt.tk","chatgpt su TLD sospetto"],
+      ["ups-tracking.com","combo su ups (brand corto: combo resta attiva)"],
+      ["brt-spedizione.it","combo su brt"],
+      ["sda-consegna.it","combo su sda"],
+      ["inpost-pacco.it","combo su inpost"],
+      ["enel-pagamento.it","combo su enel"],
+      ["eni-fattura.com","combo su eni"],
+      ["tim-login.it","combo su tim"],
+      ["sky-login.it","combo su sky"],
+      // v1.5.0 ③ TLD e piattaforme hosting aggiunti alle liste
+      ["paypal.bond","brand su .bond"],
+      ["microsoft.lol","brand su .lol"],
+      ["amazon.skin","brand su .skin"],
+      ["netflix.mom","brand su .mom"],
+      ["paypal-login.notion.site","brand+parola su notion.site"],
+      ["paypa1.carrd.co","omoglifo del brand su carrd.co"],
+      ["microsoft-verify.sharepoint.com","brand+parola su tenant SharePoint"],
+      ["paypal-secure.blob.core.windows.net","brand+parola su Azure blob"],
+      ["g00gle.fly.dev","omoglifo su fly.dev"],
+      ["amazon-refund.up.railway.app","brand+parola su Railway"]
     ];
     for (const [h, why] of attacks) {
       const r = findImpersonation(h);
@@ -352,6 +390,15 @@ window.makePageStub = function (opts) {
       "nestlé.com","señor.es","età.it",
       // v1.4.1: trattini — direzione-only: ufficiale CON trattino, varianti legittime
       "deutsche-bank.com","creditagricole.fr",
+      // v1.5.0: brand corti (<=3) = mai distanza -> questi vicini restano puliti
+      "tin.it","ski.it","up.com","emi.com","bt.com",
+      // v1.5.0: vicini legittimi della regola typo-su-TLD-diverso
+      "switch.ch","amazone.de","mail.de","fortnine.ca","paypay.co.jp",
+      "googlepay.de","postepay.de","docusign.net","discovery.de",
+      // v1.5.0: nuove voci green-list (dist-1 preesistenti scovate ora)
+      "discovery.com","uspa.com","telegraf.rs",
+      // v1.5.0: uso legittimo delle nuove piattaforme hosting
+      "acme.notion.site","microsoft.sharepoint.com","shop.carrd.co","myapp.fly.dev",
       // typo su TLD spazzatura: brand corti / parole comuni su quei TLD -> niente FP da dist-1
       "info.tk","blog.xyz","news.top","my-app.pages.dev"
     ];

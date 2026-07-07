@@ -7,15 +7,16 @@ Unlike blocklists (which only know sites that have already been reported), Patch
 Part of the [PatchPulse](https://patchpulse.org) project.
 
 ## What it catches
-- **Typos / ASCII homoglyphs** — `rnicrosoft.com` (rn→m), `paypa1.com` (1→l), `gogle.com`, swapped letters (`googel.com`) — on any domain ending (`paypa1.co.za`, `g00gle.de`)
+- **Typos / ASCII homoglyphs** — `rnicrosoft.com` (rn→m), `paypa1.com` (1→l), `gogle.com`, swapped letters (`googel.com`) — on any domain ending (`paypa1.co.za`, `g00gle.de`); for longer brand names (7+ letters) even a plain one-letter typo on a *different* ending is caught (`steamcommunlty.ru`)
 - **Hyphen tricks** — `pay-pal.com`, `pay-pal.de`, `paypal.com-secure.ru`
-- **Unicode / IDN homographs** — Cyrillic, Greek, Armenian and extended-Latin letters that imitate Latin ones (curated UTS #39 subset, with `xn--` punycode decoding): `аpple.com`, `ıcloud.com` — plus accented-Latin spoofs like `pàypal.com` or `gøogle.com` (diacritic folding, exact match only so `mañana.com`-style legit domains never trigger)
+- **Unicode / IDN homographs** — Cyrillic, Greek, Armenian, Cherokee and extended-Latin letters that imitate Latin ones (curated UTS #39 subset, with `xn--` punycode decoding): `аpple.com`, `ıcloud.com` — plus accented-Latin spoofs like `pàypal.com` or `gøogle.com` (diacritic folding, exact match only so `mañana.com`-style legit domains never trigger)
 - **An official domain used as a sub-domain** of another — `paypal.com.evil-login.ru`, `paypal.com.tk`
 - **Brand as sub-domain with phishing words** — `paypal.secure-verify.ru`
 - **Combo-squatting** — the brand plus phishing words in English and Italian (~140 words): `paypal-login.com`, `applesupport.com`, `amazon-verifica.com`, `dhl-tracking.com`
-- **TLD abuse** — the brand name, exact or as a hyphen token, on an abuse-prone TLD: `paypal.tk`, `paypal.co`, `fortnite-skins.tk`
+- **TLD abuse** — the brand name, exact or as a hyphen token, on an abuse-prone TLD: `paypal.tk`, `paypal.co`, `fortnite-skins.tk`, `paypal.bond`
+- **Brand pages on free hosting / tenant platforms** — `secure-paypal.vercel.app`, `paypal-login.notion.site`, `paypal-verify.sharepoint.com`, Azure blobs and 30+ more platforms (real company pages like `microsoft.github.io` stay clean)
 
-Domains are resolved with the full **Public Suffix List**, so all of the above works on multi-level endings (`.co.za`, `.com.tr`, `.co.uk`...) — both for the 173 built-in domains and for the ones you add yourself, which get the exact same protection.
+Domains are resolved with the full **Public Suffix List**, so all of the above works on multi-level endings (`.co.za`, `.com.tr`, `.co.uk`...) — both for the 185 built-in domains and for the ones you add yourself, which get the exact same protection.
 
 ## Installation
 **Firefox** — <https://addons.mozilla.org/firefox/addon/patchpulse-anti-phishing/>

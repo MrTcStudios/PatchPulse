@@ -6,7 +6,8 @@
 
    Controlli, in ordine:
      1. typo/omoglifi ASCII e trattini (distanza di Damerau-Levenshtein),
-        su qualsiasi TLD se il nome e' un omoglifo del brand
+        su qualsiasi TLD se il nome e' un omoglifo del brand; per i brand
+        lunghi (>=7) anche il typo puro su TLD diverso (steamcommunlty.ru)
      2. omografi Unicode/IDN (cirillico/greco/armeno, punycode xn--)
      2b. omografi latini accentati (pàypal.com, gøogle.de) — solo match esatto
      3. dominio ufficiale incastonato nei sottodomini (paypal.com.evil.ru),
@@ -22,11 +23,12 @@
    ============================================================ */
 
 /* MAX_DOMAINS arriva da lib/match.js (condiviso con popup e onboarding). */
-const DEFAULTS_VERSION = 5;   // alza questo numero ogni volta che amplii DEFAULT_DOMAINS
+const DEFAULTS_VERSION = 6;   // alza questo numero ogni volta che amplii DEFAULT_DOMAINS
 const DEFAULT_SET = new Set(DEFAULT_DOMAINS);
 
 let officialDomains = [];
 let officialIndex = [];   // pre-calcolo: [{ domain, norm, labels, brand, brandNorm }]
+let officialBrandSet = new Set();   // brand protetti: guardia "variante nazionale"
 
 /* Pre-calcola una volta sola le forme derivate dei domini ufficiali,
    cosi' non rifacciamo il lavoro a ogni navigazione. */
@@ -39,6 +41,7 @@ function rebuildIndex() {
     brandNorm: normalize(brandOf(d)),
     tld: tldOf(d)
   }));
+  officialBrandSet = new Set(officialIndex.map((o) => o.brand));
 }
 
 async function loadDomains() {
@@ -101,6 +104,7 @@ function nearestOfficial(candidate) {
   const cBrandRaw = brandOf(candidate);          // senza trattini, NON normalizzato
   const cBrandNorm = normalize(cBrandRaw);
   const cTld = tldOf(candidate);
+  const crossTldEligible = !officialBrandSet.has(cBrandRaw) && !GREEN_BRANDS.has(cBrandRaw);
   for (const o of officialIndex) {
     if (nc === o.norm) return o.domain;
     // Nome identico solo DOPO la normalizzazione (paypa1, g00gle, rnicrosoft),
@@ -114,9 +118,23 @@ function nearestOfficial(candidate) {
     // nazionale quasi sempre legittima -> niente confronto per distanza.
     // I TLD davvero pericolosi (.tk, .co, .cm...) li gestisce findTldAbuse.
     if (cBrandRaw === o.brand && cTld !== o.tld) continue;
+    // Brand cortissimi (<=3: ups, brt, tim, sky, eni, dhl, n26): la distanza
+    // scatterebbe su mezzo dizionario (tin.it, ski.it, up.com, emi.com).
+    // Per loro NIENTE confronto per distanza: restano attivi match esatto,
+    // omoglifi, combo, TLD-abuse, sottodomini.
+    if (o.brandNorm.length <= 3) continue;
     const dist = levenshtein(nc, o.norm);
     const maxDist = o.norm.length <= 8 ? 1 : 2;
     if (dist >= 1 && dist <= maxDist) return o.domain;
+    // Typo del brand su TLD DIVERSO (steamcommunlty.ru, facebok.ru): 1 sola
+    // modifica, solo brand lunghi (>=7, sotto ci sono troppi vicini legittimi:
+    // switch/twitch, amazone/amazon), mai per brand-parole (BRAND_EXCLUDED),
+    // mai se il nome visitato E' un brand protetto o di green-list (variante
+    // nazionale: googlepay.de, fortnine.ca).
+    if (crossTldEligible && cTld !== o.tld &&
+        o.brandNorm.length >= 7 && !BRAND_EXCLUDED.has(o.brand) &&
+        Math.abs(cBrandNorm.length - o.brandNorm.length) <= 1 &&
+        levenshtein(cBrandNorm, o.brandNorm) === 1) return o.domain;
   }
   return null;
 }
