@@ -114,8 +114,33 @@ h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 
   text-underline-offset: 3px;
 }
 
+.row.puny { border-left: 3px solid var(--border); }
+.row.puny .value { color: var(--muted); font-size: 13px; font-weight: 400; }
+
+.demo-note {
+  font-size: 12px;
+  color: var(--purple);
+  background: rgba(139, 124, 248, 0.1);
+  border: 1px dashed rgba(139, 124, 248, 0.4);
+  border-radius: 10px;
+  padding: 8px 12px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
 .report { margin-top: 14px; text-align: center; }
 .report a { font-size: 12px; color: var(--muted); text-decoration: underline; }
 .report a:hover { color: var(--text); }
+.btn-copy {
+  margin-left: 10px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.btn-copy:hover { color: var(--text); border-color: var(--muted); }
 
 .version { margin-top: 10px; text-align: center; font-size: 11px; color: #555; }

@@ -62,12 +62,16 @@ window.browser = {
   tabs: {
     update(id, o) { window.__updates.push({ id, url: o.url }); },
     create(o) { window.__tabsCreated.push(o.url); }
+  },
+  action: {
+    setBadgeText(o) { window.__badgeText = o.text; },
+    setBadgeBackgroundColor() {}
   }
 };
 
 /* Stub per le PAGINE (popup/warning) in iframe. */
 window.makePageStub = function (opts) {
-  const logs = { messages: [], removedTabs: [], queries: 0 };
+  const logs = { messages: [], removedTabs: [], queries: 0, created: [], optionsOpened: false };
   const stub = {
     i18n: { getUILanguage() { return opts.lang || "en-US"; } },
     storage: {
@@ -83,12 +87,15 @@ window.makePageStub = function (opts) {
     },
     runtime: {
       async sendMessage(msg) { logs.messages.push(msg); return { ok: true }; },
-      getManifest() { return { version: "9.9.9-test" }; }
+      getManifest() { return { version: "9.9.9-test" }; },
+      getURL(p) { return "moz-extension://test/" + p; },
+      async openOptionsPage() { logs.optionsOpened = true; }
     },
     tabs: {
       async query() { logs.queries++; return opts.tabs || []; },
       async getCurrent() { return { id: 42 }; },
-      async remove(id) { logs.removedTabs.push(id); }
+      async remove(id) { logs.removedTabs.push(id); },
+      async create(o) { logs.created.push(o.url); }
     }
   };
   return { stub, logs };
@@ -399,6 +406,11 @@ window.makePageStub = function (opts) {
       "discovery.com","uspa.com","telegraf.rs",
       // v1.5.0: uso legittimo delle nuove piattaforme hosting
       "acme.notion.site","microsoft.sharepoint.com","shop.carrd.co","myapp.fly.dev",
+      // v1.6.0: rappresentanti dello sweep Tranco (95 green nuove) + fix
+      // variante nazionale su suffisso 2-livelli sospetto (google.com.co)
+      "box.com","opera.com","intel.com","chess.com","telegra.ph","onmicrosoft.com",
+      "adobelogin.com","wal-mart.com","apple.co","fortinet.com","overdrive.com",
+      "google.com.co","google.com.om","login.google.com.co",
       // typo su TLD spazzatura: brand corti / parole comuni su quei TLD -> niente FP da dist-1
       "info.tk","blog.xyz","news.top","my-app.pages.dev"
     ];
@@ -448,10 +460,21 @@ window.makePageStub = function (opts) {
 
     await nav("https://gogle.com/a");
     ok(upd.length === 3, "gogle.com bloccato prima del 'mi fido'");
+    /* v1.6: "Mi fido" -> allow-list personale, NON piu' tra i protetti */
+    await window.__onMsg({ type: "allowForever", domain: "gogle.com" });
+    const ugl = (await browser.storage.local.get("userGreenList")).userGreenList || [];
+    ok(ugl.includes("gogle.com") && !officialDomains.includes("gogle.com"),
+       "allowForever: dominio nei siti fidati, NON nei protetti");
+    await nav("https://gogle.com/b");
+    ok(upd.length === 3, "dopo 'mi fido' non viene piu' bloccato (allow-list)");
+    await browser.storage.local.set({ userGreenList: [] });
+    await nav("https://gogle.com/c");
+    ok(upd.length === 4, "tolto dai siti fidati (opzioni) -> torna a essere bloccato");
+    /* addOfficial resta l'API per aggiungere ai protetti (popup / sezione I) */
     await window.__onMsg({ type: "addOfficial", domain: "gogle.com" });
     ok(officialDomains.includes("gogle.com"), "addOfficial: dominio aggiunto ai protetti");
-    await nav("https://gogle.com/b");
-    ok(upd.length === 3, "dopo 'mi fido' non viene piu' bloccato");
+    await nav("https://gogle.com/d");
+    ok(upd.length === 4, "da protetto non viene bloccato");
 
     /* v1.4.1: il bypass ha una SCADENZA (15 min), non vale tutta la sessione */
     const bypassStore = (await browser.storage.session.get("bypass")).bypass || {};
@@ -464,6 +487,31 @@ window.makePageStub = function (opts) {
     ok(upd.length === uTtl + 1, "bypass scaduto -> il sosia viene RIbloccato");
     ok(!("rnicrosoft.com" in ((await browser.storage.session.get("bypass")).bypass || {})),
        "bypass scaduto -> voce ripulita dallo storage");
+
+    /* v1.6: pausa protezione dalle opzioni */
+    const uP = upd.length;
+    await browser.storage.local.set({ paused: true });
+    await nav("https://paypa1.com/paused-test");
+    ok(upd.length === uP, "in pausa: il sosia NON viene bloccato");
+    await browser.storage.local.set({ paused: false });
+    await nav("https://paypa1.com/unpaused-test");
+    ok(upd.length === uP + 1, "riattivata: il sosia torna a essere bloccato");
+
+    /* v1.6: cronologia disattivabile (il contatore aggregato resta) */
+    const s0 = await browser.storage.local.get(["blockedCount", "recentBlocked"]);
+    await browser.storage.local.set({ recordHistory: false });
+    await nav("https://g00gle.com/no-history");
+    const s1 = await browser.storage.local.get(["blockedCount", "recentBlocked"]);
+    ok(s1.blockedCount === (s0.blockedCount || 0) + 1, "cronologia OFF: il contatore avanza comunque");
+    ok((s1.recentBlocked || []).length === (s0.recentBlocked || []).length,
+       "cronologia OFF: nessuna voce aggiunta alle recenti");
+    await browser.storage.local.set({ recordHistory: true });
+
+    /* v1.6: badge sull'icona = contatore minacce */
+    ok(window.__badgeText === String(s1.blockedCount),
+       "badge: mostra il contatore (" + s1.blockedCount + ")");
+    await browser.storage.local.set({ blockedCount: 0, recentBlocked: [] });
+    ok(window.__badgeText === "", "badge: azzerato dopo 'cancella' dalle opzioni");
 
     const lenBefore = officialDomains.length;
     await window.__onMsg({ type: "addOfficial", domain: "Bad Domain!!" });
@@ -608,7 +656,8 @@ window.makePageStub = function (opts) {
       window[key] = stub;
       const inject = 'window.browser = parent["' + key + '"];'
         + '(function(){var R = window.URLSearchParams; var Q = ' + JSON.stringify(query) + ';'
-        + 'window.URLSearchParams = function(i){ return new R((i === "" || i == null) ? Q : i); };})();';
+        + 'window.URLSearchParams = function(i){ return new R((i === "" || i == null) ? Q : i); };})();'
+        + 'try { navigator.clipboard.writeText = function(t){ window.__copied = t; return Promise.resolve(); }; } catch (e) {}';
       html = html.replace(/<head>/i, '<head><base href="' + location.origin + '/warning/">');
       html = html.replace(/<script/i, '<scr' + 'ipt>' + inject + '</scr' + 'ipt><scr' + 'ipt');
       const f = document.createElement("iframe");
@@ -635,9 +684,16 @@ window.makePageStub = function (opts) {
     ok(d.getElementById("suspicious").textContent === "rnicrosoft.com" && diffEl && diffEl.textContent === "rn",
        "warning: lettere ingannevoli evidenziate ('rn' marcato, testo completo intatto)");
     ok(d.getElementById("version").textContent.includes("9.9.9-test"), "warning: versione estensione mostrata");
+    ok(d.activeElement && d.activeElement.id === "back", "warning: focus iniziale su 'Torna indietro' (Invio = scelta sicura)");
+    ok(d.getElementById("puny-row").hidden, "warning: riga punycode nascosta per domini ASCII");
+    ok(d.getElementById("demo-note").hidden, "warning: nota demo nascosta in modalita' normale");
     const rl = d.getElementById("report");
     ok(rl.href.startsWith("mailto:support@patchpulse.org") && rl.href.includes("rnicrosoft.com"),
        "warning: link segnalazione falso allarme (mailto precompilato col dominio)");
+    d.getElementById("copy").click();
+    await sleep(80);
+    ok((w1.contentWindow.__copied || "").includes("rnicrosoft.com"),
+       "warning: 'copia dettagli' mette il report negli appunti");
     const nav1 = awaitLoad(w1);
     d.getElementById("proceed").click();
     ok((await nav1) === "load", "warning: 'vai comunque' naviga davvero");
@@ -649,7 +705,8 @@ window.makePageStub = function (opts) {
     const nav2 = awaitLoad(w2);
     w2.contentDocument.getElementById("trust").click();
     ok((await nav2) === "load", "warning: 'mi fido' naviga davvero");
-    ok(l2.messages.some(m => m.type === "addOfficial" && m.domain === "rnicrosoft.com"), "warning: 'mi fido' invia addOfficial");
+    ok(l2.messages.some(m => m.type === "allowForever" && m.domain === "rnicrosoft.com"),
+       "warning: 'mi fido' invia allowForever (allow-list, non protetti)");
     w2.remove();
 
     /* sicurezza: target javascript: -> nessuna navigazione, nessun messaggio */
@@ -675,6 +732,25 @@ window.makePageStub = function (opts) {
       ok(f.contentDocument.getElementById("reason").textContent.length > 5, "warning: motivo '" + reason + "' ha testo");
       f.remove();
     }
+
+    /* v1.6: IDN -> forma leggibile nel confronto + riga "indirizzo reale" col punycode */
+    const qsIdn = "?suspicious=xn--pypal-rqa.com&official=paypal.com&reason=omografi&target=" + encodeURIComponent(target);
+    let { f: w5 } = await loadWarning(qsIdn, { lang: "en-US", storage: {} });
+    const uniForm = idnToUnicode("xn--pypal-rqa.com");
+    ok(uniForm !== "xn--pypal-rqa.com" && w5.contentDocument.getElementById("suspicious").textContent === uniForm,
+       "warning IDN: mostra la forma leggibile (" + uniForm + ")");
+    ok(!w5.contentDocument.getElementById("puny-row").hidden
+       && w5.contentDocument.getElementById("puny").textContent === "xn--pypal-rqa.com",
+       "warning IDN: riga 'indirizzo reale' col punycode");
+    w5.remove();
+
+    /* v1.6: modalita' demo (aperta dall'onboarding): nessuna azione possibile */
+    let { f: w6, logs: l6 } = await loadWarning("?demo=1&suspicious=rnicrosoft.com&official=microsoft.com&reason=typo", { lang: "en-US", storage: {} });
+    ok(!w6.contentDocument.getElementById("demo-note").hidden, "warning demo: nota dimostrativa visibile");
+    ok(w6.contentDocument.getElementById("trust").hidden && w6.contentDocument.getElementById("proceed").hidden,
+       "warning demo: 'mi fido' e 'vai comunque' nascosti");
+    ok(l6.messages.length === 0, "warning demo: nessun messaggio al background");
+    w6.remove();
 
     /* ═════════ H. POPUP (srcdoc + stub pre-iniettato) ═════════ */
     document.title = "sezione H";
@@ -703,7 +779,7 @@ window.makePageStub = function (opts) {
       blockedCount: 7,
       recentBlocked: [{ d: "evil-paypal.com", o: "paypal.com", r: "combo", t: Date.now() }]
     };
-    let { f: p1, how: howP } = await loadPopup({ lang: "en-US", storage: popupStorage, tabs: [{ url: "https://login.mybank.it/area" }] });
+    let { f: p1, logs: lp1, how: howP } = await loadPopup({ lang: "en-US", storage: popupStorage, tabs: [{ url: "https://login.mybank.it/area" }] });
     ok(howP === "load", "popup: pagina caricata");
     d = p1.contentDocument;
     ok(d.getElementById("count").textContent === "2", "popup: contatore lista = 2");
@@ -755,6 +831,27 @@ window.makePageStub = function (opts) {
     li.querySelector(".remove").click();
     await sleep(80);
     ok(!popupStorage.officialDomains.includes("ebay.it"), "popup: rimozione con x funziona");
+
+    /* v1.6: distintivo "tuo" sui domini aggiunti dall'utente */
+    const yoursLi = [...d.querySelectorAll("#domain-list li")].find(x => x.dataset.d === "mybank.it");
+    ok(!!(yoursLi && yoursLi.querySelector(".tag-yours")), "popup: distintivo 'tuo' sul dominio utente");
+    const defLi = [...d.querySelectorAll("#domain-list li")].find(x => x.dataset.d === "google.com");
+    ok(!!(defLi && !defLi.querySelector(".tag-yours")), "popup: nessun distintivo sui default");
+
+    /* v1.6: filtro della lista */
+    d.getElementById("filter").value = "esempio";
+    d.getElementById("filter").dispatchEvent(new p1.contentWindow.Event("input"));
+    await sleep(50);
+    const visibleLis = [...d.querySelectorAll("#domain-list li")].filter(li => !li.hidden);
+    ok(visibleLis.length === 1 && visibleLis[0].dataset.d === "esempio.com",
+       "popup: filtro mostra solo i domini corrispondenti");
+    d.getElementById("filter").value = "";
+    d.getElementById("filter").dispatchEvent(new p1.contentWindow.Event("input"));
+
+    /* v1.6: ingranaggio -> impostazioni */
+    d.getElementById("options").click();
+    await sleep(50);
+    ok(lp1.optionsOpened === true, "popup: ingranaggio apre la pagina impostazioni");
     p1.remove();
 
     /* v1.4.1: il tetto MAX_DOMAINS vale anche per il popup (prima lo saltava) */
@@ -806,6 +903,10 @@ window.makePageStub = function (opts) {
     ok(od.querySelector("h1").textContent.includes("Welcome"), "onboarding EN: titolo tradotto");
     ok(od.getElementById("intro").textContent.includes("1"), "onboarding: conteggio siti protetti nel testo");
     ok(od.getElementById("version").textContent.includes("9.9.9-test"), "onboarding: versione mostrata");
+    od.getElementById("demo").click();
+    await sleep(50);
+    ok(obLogs.created.length === 1 && obLogs.created[0].includes("warning/warning.html?demo=1"),
+       "onboarding: 'guarda un esempio' apre l'avviso in modalita' demo");
     od.getElementById("domain-input").value = "https://www.MyBank.it/login";
     od.getElementById("add-btn").click();
     await sleep(100);
@@ -821,6 +922,94 @@ window.makePageStub = function (opts) {
     ok(ob2.contentDocument.getElementById("intro").textContent.includes(String(DEFAULT_DOMAINS.length)),
        "onboarding: senza storage usa il conteggio dei default");
     ob2.remove();
+
+    /* ═════════ K. PAGINA OPZIONI (v1.6, UI reale in iframe) ═════════ */
+    document.title = "sezione K";
+    out.push("\n===== K. PAGINA OPZIONI =====");
+    async function loadOptions(opts) {
+      const res = await fetch("/options/options.html");
+      let html = await res.text();
+      html = html.replace(/src="([^"]+\.js)"/g, 'src="$1?b=' + Date.now() + '"');
+      const { stub, logs } = window.makePageStub(opts);
+      const key = "__stub" + Math.random().toString(36).slice(2);
+      window[key] = stub;
+      html = html.replace(/<head>/i, '<head><base href="' + location.origin + '/options/">');
+      html = html.replace(/<script/i, '<scr' + 'ipt>window.browser = parent["' + key + '"];</scr' + 'ipt><scr' + 'ipt');
+      const f = document.createElement("iframe");
+      f.style.cssText = "width:660px;height:820px;visibility:hidden;position:absolute";
+      document.body.appendChild(f);
+      const p = awaitLoad(f);
+      f.srcdoc = html;
+      const how = await p;
+      await sleep(100);
+      return { f, logs, how };
+    }
+
+    const optStorage = {
+      officialDomains: ["google.com", "mybank.it"],
+      removedDefaults: ["poste.it"],
+      userGreenList: ["trusted.com"],
+      blockedCount: 5,
+      recentBlocked: [{ d: "x.com", o: "y.com", r: "typo", t: Date.now() }]
+    };
+    let { f: k1, how: howK } = await loadOptions({ lang: "en-US", storage: optStorage, tabs: [] });
+    ok(howK === "load", "opzioni: pagina caricata");
+    const kd = k1.contentDocument;
+    ok(kd.getElementById("ver").textContent === "v9.9.9-test", "opzioni: versione mostrata");
+    ok(kd.querySelectorAll("#green-list li").length === 1
+       && kd.querySelector("#green-list li span").textContent === "trusted.com",
+       "opzioni: siti fidati renderizzati dallo storage");
+    ok(kd.getElementById("green-empty").hidden, "opzioni: nota 'vuoto' nascosta se ci sono voci");
+    ok(kd.getElementById("pause-toggle").checked === false && kd.getElementById("paused-warn").hidden,
+       "opzioni: pausa spenta di default");
+    ok(kd.getElementById("history-toggle").checked === true, "opzioni: cronologia attiva di default");
+
+    /* pausa on/off scrive in storage e mostra l'avviso */
+    kd.getElementById("pause-toggle").checked = true;
+    kd.getElementById("pause-toggle").dispatchEvent(new k1.contentWindow.Event("change"));
+    await sleep(60);
+    ok(optStorage.paused === true, "opzioni: pausa attivata -> salvata in storage");
+    ok(!kd.getElementById("paused-warn").hidden, "opzioni: avviso 'in pausa' visibile");
+    kd.getElementById("pause-toggle").checked = false;
+    kd.getElementById("pause-toggle").dispatchEvent(new k1.contentWindow.Event("change"));
+    await sleep(60);
+    ok(optStorage.paused === false, "opzioni: riattivazione salvata");
+
+    /* cronologia off + cancella tutto */
+    kd.getElementById("history-toggle").checked = false;
+    kd.getElementById("history-toggle").dispatchEvent(new k1.contentWindow.Event("change"));
+    await sleep(60);
+    ok(optStorage.recordHistory === false, "opzioni: registro cronologia disattivato");
+    kd.getElementById("clear-history").click();
+    await sleep(60);
+    ok(optStorage.blockedCount === 0 && optStorage.recentBlocked.length === 0,
+       "opzioni: 'cancella' azzera contatore e cronologia");
+    ok(kd.getElementById("msg").textContent.length > 3, "opzioni: conferma della cancellazione mostrata");
+
+    /* rimozione di un sito fidato */
+    kd.querySelector("#green-list .remove").click();
+    await sleep(60);
+    ok(optStorage.userGreenList.length === 0, "opzioni: sito fidato rimosso");
+    ok(!kd.getElementById("green-empty").hidden, "opzioni: nota 'vuoto' visibile dopo la rimozione");
+
+    /* ripristino della lista in due passi */
+    const resetB = kd.getElementById("reset-defaults");
+    const armText0 = resetB.textContent;
+    resetB.click();
+    await sleep(60);
+    ok(resetB.textContent !== armText0 && optStorage.officialDomains.length === 2,
+       "opzioni: primo click arma soltanto (nessun ripristino)");
+    resetB.click();
+    await sleep(60);
+    ok(optStorage.officialDomains.length === DEFAULT_DOMAINS.length
+       && optStorage.removedDefaults.length === 0,
+       "opzioni: secondo click ripristina i " + DEFAULT_DOMAINS.length + " default e svuota removedDefaults");
+    k1.remove();
+
+    let { f: k2 } = await loadOptions({ lang: "it-IT", storage: { userGreenList: [] }, tabs: [] });
+    ok(k2.contentDocument.querySelector(".tagline").textContent === "Impostazioni", "opzioni IT: titolo tradotto");
+    ok(!k2.contentDocument.getElementById("green-empty").hidden, "opzioni: lista fidati vuota -> nota visibile");
+    k2.remove();
 
   } catch (e) {
     out.push("\nECCEZIONE: " + e.message + "\n" + (e.stack || ""));

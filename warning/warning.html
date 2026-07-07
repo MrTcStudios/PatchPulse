@@ -24,9 +24,15 @@
         <span class="label" data-i18n="labelLooksLike">Assomiglia a</span>
         <span id="official" class="value"></span>
       </div>
+      <div class="row puny" id="puny-row" hidden>
+        <span class="label" data-i18n="punyLabel">Indirizzo reale</span>
+        <span id="puny" class="value"></span>
+      </div>
     </div>
 
     <p class="why-flagged" id="reason"></p>
+
+    <p class="demo-note" id="demo-note" data-i18n="demoNote" hidden>Esempio dimostrativo: nessun sito è stato bloccato davvero.</p>
 
     <div class="actions">
       <button id="back" class="btn-primary" data-i18n="btnBack">Torna indietro (consigliato)</button>
@@ -39,11 +45,15 @@
       dall'icona di PatchPulse nella barra del browser.
     </p>
 
-    <p class="report"><a id="report" href="#" data-i18n="reportLink">Pensi sia un errore? Segnala il falso allarme</a></p>
+    <p class="report">
+      <a id="report" href="#" data-i18n="reportLink">Pensi sia un errore? Segnala il falso allarme</a>
+      <button id="copy" class="btn-copy" data-i18n="copyBtn">Copia dettagli</button>
+    </p>
     <p class="version" id="version"></p>
   </main>
 
   <script src="../lib/i18n.js"></script>
+  <script src="../lib/match.js"></script>
   <script src="warning.js"></script>
 </body>
 </html>

@@ -13,6 +13,14 @@ const suspicious = params.get("suspicious") || "";
 const official = params.get("official") || "";
 const reason = params.get("reason") || "";
 const target = params.get("target") || "";
+const isDemo = params.get("demo") === "1";
+
+/* Per gli IDN il browser ci consegna il punycode (xn--...): all'utente
+   mostriamo la forma com'appare nella barra (idnToUnicode da match.js) e
+   il punycode finisce nella riga "Indirizzo reale". Storage e messaggi al
+   background restano SEMPRE sul punycode. */
+const suspiciousShown =
+  (typeof idnToUnicode === "function") ? idnToUnicode(suspicious) : suspicious;
 
 /* Evidenzia la parte del dominio sospetto che differisce da quello ufficiale:
    prefisso e suffisso comuni restano normali, il "trucco" viene marcato.
@@ -40,11 +48,18 @@ function renderDiff(el, bad, good) {
 // mostra il confronto. Per gli "script misti" non c'è un ufficiale preciso:
 // mostriamo solo il dominio visitato e nascondiamo la riga "Assomiglia a".
 if (official) {
-  renderDiff(document.getElementById("suspicious"), suspicious, official);
+  renderDiff(document.getElementById("suspicious"), suspiciousShown, official);
   document.getElementById("official").textContent = official;
 } else {
-  document.getElementById("suspicious").textContent = suspicious;
+  document.getElementById("suspicious").textContent = suspiciousShown;
   document.getElementById("official-row").hidden = true;
+}
+
+// Se la forma mostrata differisce dal punycode, fai vedere anche quello:
+// e' l'indirizzo che il browser usa davvero.
+if (suspiciousShown !== suspicious) {
+  document.getElementById("puny-row").hidden = false;
+  document.getElementById("puny").textContent = suspicious;
 }
 
 // Spiega PERCHÉ il sito è stato segnalato.
@@ -66,7 +81,15 @@ document.getElementById("version").textContent = "PatchPulse v" + version;
 
 // Pulsante "Mi fido": mostriamo il dominio bloccato per chiarezza.
 const trustBtn = document.getElementById("trust");
-trustBtn.textContent = suspicious ? t("btnTrustDomain", suspicious) : t("btnTrust");
+trustBtn.textContent = suspiciousShown ? t("btnTrustDomain", suspiciousShown) : t("btnTrust");
+
+// Modalita' demo (dall'onboarding): solo dimostrativa, niente pulsanti
+// che navigano o modificano le liste.
+if (isDemo) {
+  document.getElementById("demo-note").hidden = false;
+  trustBtn.hidden = true;
+  document.getElementById("proceed").hidden = true;
+}
 
 /* Link "segnala falso allarme": mailto: apre il client di posta DELL'UTENTE
    con destinatario/oggetto/corpo precompilati; l'invio resta una scelta sua.
@@ -81,6 +104,24 @@ document.getElementById("report").href =
   "mailto:" + PP_SUPPORT_EMAIL +
   "?subject=" + encodeURIComponent(t("reportSubject", suspicious)) +
   "&body=" + encodeURIComponent(reportBody);
+
+/* "Copia dettagli": per chi non ha un client di posta configurato (il link
+   mailto non aprirebbe nulla). Solo appunti locali, nessuna rete. */
+const copyBtn = document.getElementById("copy");
+copyBtn.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(reportBody);
+    copyBtn.textContent = t("copied");
+  } catch (e) {
+    // fallback per contesti senza Clipboard API
+    const ta = document.createElement("textarea");
+    ta.value = reportBody;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); copyBtn.textContent = t("copied"); } catch (e2) {}
+    ta.remove();
+  }
+});
 
 /* Accettiamo SOLO destinazioni http/https: blocca trucchi tipo
    target=javascript:... o target=data:... (sicurezza). */
@@ -108,18 +149,20 @@ document.getElementById("back").addEventListener("click", async () => {
   }
 });
 
-/* "Mi fido": aggiunge il dominio ai protetti (protezione permanente) e prosegue. */
+/* "Mi fido": mette il dominio nell'allow-list personale (non verra' piu'
+   segnalato — NON diventa un sito protetto) e prosegue. Gestibile dalle
+   impostazioni, sezione "Siti fidati". */
 trustBtn.addEventListener("click", async () => {
   if (!isSafeHttpUrl(target)) return;
   try {
-    await browser.runtime.sendMessage({ type: "addOfficial", domain: suspicious });
+    await browser.runtime.sendMessage({ type: "allowForever", domain: suspicious });
   } catch (e) {
-    console.error("[PatchPulse] aggiunta ai protetti non riuscita, navigo comunque:", e);
+    console.error("[PatchPulse] aggiunta ai siti fidati non riuscita, navigo comunque:", e);
   }
   window.location.replace(target);
 });
 
-/* "Vai comunque": via libera SOLO per questa sessione, poi prosegue. */
+/* "Vai comunque": via libera temporaneo (15 minuti), poi prosegue. */
 document.getElementById("proceed").addEventListener("click", async () => {
   if (!isSafeHttpUrl(target)) return;
   try {
@@ -129,3 +172,6 @@ document.getElementById("proceed").addEventListener("click", async () => {
   }
   window.location.replace(target);
 });
+
+/* Focus sulla scelta sicura: premere Invio = "Torna indietro". */
+document.getElementById("back").focus();

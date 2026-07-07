@@ -96,4 +96,16 @@ h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 
 }
 .btn-primary:hover { background: var(--purple-dark); }
 
+.btn-ghost {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--muted);
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 12px;
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
 .version { margin-top: 12px; text-align: center; font-size: 11px; color: #555; }

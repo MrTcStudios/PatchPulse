@@ -31,12 +31,12 @@ To see the warning, type a look-alike of a default domain in the address bar, e.
 ## How it works
 1. It runs in the background on every site you open.
 2. If the address is a look-alike, it shows a warning comparing the fake domain with the official one, **highlighting the deceptive letters** and explaining why.
-3. You decide: **go back**, **continue anyway** (temporarily — the pass expires after ~15 minutes), or **add it to your protected list** if you trust it. False alarms can be reported with one click — it opens a pre-filled email, nothing is ever sent automatically.
+3. You decide: **go back**, **continue anyway** (temporarily — the pass expires after ~15 minutes), or **trust the site** so it's never flagged again (manageable later under Settings → Trusted sites). False alarms can be reported with one click — it opens a pre-filled email (or copies the details to the clipboard), nothing is ever sent automatically. For internationalized look-alikes the warning shows both the readable form and the actual punycode address.
 
-A welcome page on first install lets you add your own sites right away, and the popup shows your protected domains plus the **latest blocked threats** (with reason and date) and the extension version.
+A welcome page on first install lets you add your own sites right away (with a safe **sample warning** you can preview), the toolbar icon shows a **blocked-threats badge**, and the popup lists your protected domains (filterable, user-added ones tagged) plus the latest blocked threats. The **settings page** lets you pause protection, manage trusted sites, disable or clear the locally stored history, and restore the default list.
 
 ## Privacy
-No data collected or transmitted; the extension makes no network requests. All comparison happens on your device; the protected-domains list and the locally stored blocked-threats history never leave the browser.
+No data collected or transmitted; the extension makes no network requests. All comparison happens on your device; the protected-domains list and the locally stored blocked-threats history never leave the browser — and the history can be disabled or cleared at any time from the settings page.
 
 ## Structure
 ```
@@ -51,13 +51,17 @@ patchpulse-extension/
 ├─ popup/               # popup: protected domains + recently blocked threats
 ├─ warning/             # warning page (reason, letter diff, false-alarm report)
 ├─ onboarding/          # welcome page shown once on install
+├─ options/             # settings: pause, trusted sites, history, reset
+├─ tools/               # dev-only (NOT shipped): PSL generator, FP sweep
 └─ icons/icon.svg
 ```
 
 ## Development
 - **No build step:** it's all plain JavaScript/HTML/CSS, loaded as-is.
 - UI strings live in `lib/i18n.js` (Italian if the browser is in Italian, English otherwise).
-- To package for the store: zip the **contents** of the folder (with `manifest.json` at the root).
+- `tools/generate-psl.ps1` regenerates `lib/psl.js` from publicsuffix.org (run it every release or so).
+- `tools/fp-sweep.html` hunts false positives by running the detection pipeline over the Tranco top-10k list of real domains (needs a `tranco-top10k.txt` in the extension folder, not versioned).
+- To package for the store: zip the **contents** of the folder (with `manifest.json` at the root), excluding `tools/`, the test suite and markdown files.
 
 ## Known limitations
 - **False positives:** some legitimate sites that closely resemble an official one may get flagged. Known cases are in a *green-list*; for the rest, the "I trust this site" button and the "report a false alarm" link on the warning handle it.

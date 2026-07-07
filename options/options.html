@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>PatchPulse</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <header>
+    <img src="../icons/icon.svg" alt="" class="logo">
+    <div>
+      <h1>PatchPulse</h1>
+      <p class="tagline" data-i18n="optTitle">Impostazioni</p>
+    </div>
+    <span id="ver" class="ver"></span>
+  </header>
+
+  <section class="box">
+    <h2 data-i18n="optProtection">Protezione</h2>
+    <label class="toggle-row">
+      <input type="checkbox" id="pause-toggle">
+      <span data-i18n="optPauseLabel">Metti in pausa la protezione</span>
+    </label>
+    <p id="paused-warn" class="warn" data-i18n="optPausedWarn" hidden>
+      Protezione in pausa: nessun avviso verrà mostrato finché non la riattivi.
+    </p>
+  </section>
+
+  <section class="box">
+    <h2 data-i18n="optGreenTitle">Siti fidati</h2>
+    <p class="desc" data-i18n="optGreenDesc">
+      Domini che hai scelto di non segnalare più (col pulsante "Mi fido" sull'avviso).
+      Non ricevono protezione: semplicemente non generano avvisi.
+    </p>
+    <ul id="green-list"></ul>
+    <p id="green-empty" class="desc empty" data-i18n="optGreenEmpty" hidden>Nessun sito fidato.</p>
+  </section>
+
+  <section class="box">
+    <h2 data-i18n="optHistoryTitle">Cronologia e contatore</h2>
+    <label class="toggle-row">
+      <input type="checkbox" id="history-toggle">
+      <span data-i18n="optHistoryLabel">Registra le ultime minacce bloccate (solo sul tuo dispositivo)</span>
+    </label>
+    <button id="clear-history" class="btn-ghost" data-i18n="optHistoryClear">Cancella cronologia e azzera contatore</button>
+    <p id="msg" class="msg"></p>
+  </section>
+
+  <section class="box">
+    <h2 data-i18n="optResetTitle">Lista dei siti protetti</h2>
+    <button id="reset-defaults" class="btn-ghost" data-i18n="optResetBtn">Ripristina la lista predefinita</button>
+    <p id="reset-msg" class="msg"></p>
+  </section>
+
+  <script src="../lib/i18n.js"></script>
+  <script src="../lib/psl.js"></script>
+  <script src="../lib/match.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

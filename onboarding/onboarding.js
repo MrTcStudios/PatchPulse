@@ -65,6 +65,14 @@ inputEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter") { addDomain(inputEl.value); inputEl.value = ""; }
 });
 
+/* "Guarda un esempio": apre la pagina di avviso in modalita' demo — nessun
+   sito viene visitato davvero, i pulsanti d'azione sono nascosti. */
+document.getElementById("demo").addEventListener("click", () => {
+  const url = browser.runtime.getURL("warning/warning.html")
+    + "?demo=1&suspicious=rnicrosoft.com&official=microsoft.com&reason=typo";
+  browser.tabs.create({ url });
+});
+
 /* "Fatto": chiude la scheda di benvenuto. */
 document.getElementById("done").addEventListener("click", async () => {
   try {

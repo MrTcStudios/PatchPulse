@@ -7,3 +7,6 @@ desktop.ini
 .DS_Store
 .vscode/
 *.swp
+
+# Dati dello sweep anti-falsi-positivi (tools/fp-sweep.html), non versionati
+tranco-*.txt

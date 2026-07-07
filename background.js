@@ -29,6 +29,9 @@ const DEFAULT_SET = new Set(DEFAULT_DOMAINS);
 let officialDomains = [];
 let officialIndex = [];   // pre-calcolo: [{ domain, norm, labels, brand, brandNorm }]
 let officialBrandSet = new Set();   // brand protetti: guardia "variante nazionale"
+let userGreenSet = new Set();       // allow-list personale ("Mi fido" sull'avviso)
+let paused = false;                 // pausa protezione (dalle opzioni)
+let recordHistory = true;           // registra le ultime minacce nel popup
 
 /* Pre-calcola una volta sola le forme derivate dei domini ufficiali,
    cosi' non rifacciamo il lavoro a ogni navigazione. */
@@ -45,7 +48,14 @@ function rebuildIndex() {
 }
 
 async function loadDomains() {
-  const stored = await browser.storage.local.get(["officialDomains", "defaultsVersion", "removedDefaults"]);
+  const stored = await browser.storage.local.get([
+    "officialDomains", "defaultsVersion", "removedDefaults",
+    "paused", "userGreenList", "recordHistory", "blockedCount"
+  ]);
+  paused = Boolean(stored.paused);
+  userGreenSet = new Set(stored.userGreenList || []);
+  recordHistory = stored.recordHistory !== false;
+  refreshBadge(stored.blockedCount || 0);
   if (!stored.officialDomains || !stored.officialDomains.length) {
     // Primo avvio: parti dalla lista predefinita completa.
     officialDomains = [...DEFAULT_DOMAINS];
@@ -66,12 +76,28 @@ async function loadDomains() {
 }
 
 browser.storage.onChanged.addListener((changes, area) => {
-  if (area !== "local" || !changes.officialDomains) return;
-  const oldList = changes.officialDomains.oldValue || [];
-  officialDomains = changes.officialDomains.newValue || [];
-  rebuildIndex();
-  trackRemovedDefaults(oldList, officialDomains);
+  if (area !== "local") return;
+  if (changes.officialDomains) {
+    const oldList = changes.officialDomains.oldValue || [];
+    officialDomains = changes.officialDomains.newValue || [];
+    rebuildIndex();
+    trackRemovedDefaults(oldList, officialDomains);
+  }
+  if (changes.paused) paused = Boolean(changes.paused.newValue);
+  if (changes.userGreenList) userGreenSet = new Set(changes.userGreenList.newValue || []);
+  if (changes.recordHistory) recordHistory = changes.recordHistory.newValue !== false;
+  if (changes.blockedCount) refreshBadge(changes.blockedCount.newValue || 0);
 });
+
+/* Contatore minacce sull'icona della barra. Si aggiorna dallo storage
+   (unica fonte di verita'), cosi' resta giusto anche dopo "azzera" dalle
+   opzioni o al riavvio del browser. */
+function refreshBadge(count) {
+  if (!browser.action || !browser.action.setBadgeText) return;
+  const text = count > 0 ? (count > 99 ? "99+" : String(count)) : "";
+  browser.action.setBadgeText({ text });
+  if (count > 0) browser.action.setBadgeBackgroundColor({ color: "#c0392b" });
+}
 
 /* Registro dei default tolti dall'utente: senza, il merge di loadDomains li
    farebbe risorgere a ogni bump di DEFAULTS_VERSION. La ri-aggiunta manuale
@@ -280,6 +306,7 @@ function findImpersonation(hostname) {
 
   if (officialDomains.includes(rawDomain)) return null;   // e' il sito vero
   if (GREEN_LIST.has(rawDomain)) return null;             // sosia legittimo noto
+  if (userGreenSet.has(rawDomain)) return null;           // "Mi fido" dell'utente
 
   // 1) Typo / omoglifi ASCII / trattini camuffati.
   let official = nearestOfficial(rawDomain);
@@ -316,6 +343,11 @@ function findImpersonation(hostname) {
   if (!official && hostname.includes("-")) {
     official = findEmbeddedOfficial(hostname.replace(/-/g, ".").split("."));
   }
+  // Variante nazionale del brand STESSO su suffisso a 2 livelli col secondo
+  // livello "sospetto" (google.com.co, google.com.om): il registrabile
+  // appartiene al brand -> non e' un incastro malevolo. Gli incastri veri
+  // (paypal.com.evil.ru, paypal.com.tk) hanno un registrabile di brand diverso.
+  if (official && brandOf(official) === brandOf(rawDomain)) official = null;
   if (official) return { domain: rawDomain, official, reason: "sottodominio" };
 
   // 4) Brand come sottodominio + segnali di phishing.
@@ -391,18 +423,38 @@ function recordThreat(hit) {
     .then(async () => {
       const { blockedCount = 0, recentBlocked = [] } =
         await browser.storage.local.get(["blockedCount", "recentBlocked"]);
-      recentBlocked.unshift({ d: hit.domain, o: hit.official, r: hit.reason, t: Date.now() });
-      if (recentBlocked.length > 10) recentBlocked.length = 10;
-      await browser.storage.local.set({ blockedCount: blockedCount + 1, recentBlocked });
+      const patch = { blockedCount: blockedCount + 1 };
+      // La cronologia e' disattivabile dalle opzioni; il contatore aggregato
+      // resta (non e' cronologia di navigazione, solo un numero).
+      if (recordHistory) {
+        recentBlocked.unshift({ d: hit.domain, o: hit.official, r: hit.reason, t: Date.now() });
+        if (recentBlocked.length > 10) recentBlocked.length = 10;
+        patch.recentBlocked = recentBlocked;
+      }
+      await browser.storage.local.set(patch);
     })
     .catch((e) => console.error("[PatchPulse] statistiche:", e));
   return statsQueue;
+}
+
+/* Allow-list personale (pulsante "Mi fido"): il dominio non verra' piu'
+   segnalato, ma NON riceve le protezioni da brand dei siti protetti. */
+async function addUserGreen(domain) {
+  if (typeof domain !== "string") return;
+  if (!looksLikeDomain(domain)) return;
+  if (userGreenSet.has(domain)) return;
+  if (userGreenSet.size >= MAX_DOMAINS) return;
+  userGreenSet.add(domain);
+  await browser.storage.local.set({ userGreenList: [...userGreenSet] });
 }
 
 browser.runtime.onMessage.addListener((msg) => {
   if (!msg) return;
   if (msg.type === "proceed" && msg.domain) {
     return allowDomain(msg.domain).then(() => ({ ok: true }));
+  }
+  if (msg.type === "allowForever" && msg.domain) {
+    return addUserGreen(msg.domain).then(() => ({ ok: true }));
   }
   if (msg.type === "addOfficial" && msg.domain) {
     return addOfficial(msg.domain).then(() => ({ ok: true }));
@@ -434,6 +486,8 @@ async function handleNavigation(details) {
   // abbia finito — senza questo await girerebbe con l'indice vuoto e il
   // sosia passerebbe senza avviso.
   await ready;
+
+  if (paused) return;   // protezione in pausa dalle opzioni
 
   const hit = findImpersonation(url.hostname);
   if (!hit) return;

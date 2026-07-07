@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>PatchPulse — sweep anti-falsi-positivi (Tranco)</title>
+<style>body{font-family:monospace;white-space:pre;font-size:12px;padding:12px}</style>
+</head>
+<body>
+<script>
+/* Caccia sistematica ai falsi positivi: passa i domini REALI piu' popolari
+   (lista Tranco) dentro findImpersonation. Ogni hit e' un FP candidato da
+   triagliare (green-list, gate nuovi) — i phishing veri non stanno nella
+   top-10k. Strumento di sviluppo: NON entra nello zip per AMO.
+
+   Uso: genera tranco-top10k.txt nella cartella dell'estensione (un dominio
+   per riga, vedi memoria/CHANGELOG), servi la cartella via http e apri
+   /tools/fp-sweep.html. Risultato nel body e nel titolo. */
+
+function makeStorageArea() {
+  return {
+    _d: {},
+    async get(keys) {
+      if (typeof keys === "string") keys = [keys];
+      const out = {};
+      for (const k of keys) if (k in this._d) out[k] = this._d[k];
+      return out;
+    },
+    async set(obj) { for (const k in obj) this._d[k] = obj[k]; }
+  };
+}
+window.browser = {
+  storage: { local: makeStorageArea(), session: makeStorageArea(), onChanged: { addListener() {} } },
+  runtime: { onMessage: { addListener() {} }, onInstalled: { addListener() {} }, getURL(p) { return p; } },
+  webNavigation: { onBeforeNavigate: { addListener() {} }, onCommitted: { addListener() {} } },
+  tabs: { update() {}, create() {} },
+  action: { setBadgeText() {}, setBadgeBackgroundColor() {} }
+};
+</script>
+<script src="../lib/psl.js"></script>
+<script src="../lib/match.js"></script>
+<script src="../background.js"></script>
+<script>
+(async () => {
+  const out = [];
+  const t0 = performance.now();
+  while (typeof officialIndex === "undefined" || officialIndex.length === 0) {
+    await new Promise(r => setTimeout(r, 20));
+  }
+  let domains;
+  try {
+    const res = await fetch("../tranco-top10k.txt", { cache: "reload" });
+    if (!res.ok) throw new Error(res.status);
+    domains = (await res.text()).split("\n").map(s => s.trim()).filter(Boolean);
+  } catch (e) {
+    document.title = "sweep: manca tranco-top10k.txt";
+    document.body.textContent = "ERRORE: tranco-top10k.txt non trovato nella cartella dell'estensione.";
+    return;
+  }
+  const hits = [];
+  for (let i = 0; i < domains.length; i++) {
+    const d = domains[i];
+    let r = null;
+    try { r = findImpersonation(d); } catch (e) { hits.push([i + 1, d, "ECCEZIONE: " + e.message, ""]); continue; }
+    if (r) hits.push([i + 1, d, r.reason, r.official]);
+  }
+  const ms = Math.round(performance.now() - t0);
+  out.push("SWEEP TRANCO: " + domains.length + " domini in " + ms + " ms — " + hits.length + " hit (FP candidati)");
+  out.push("");
+  for (const [rank, d, reason, off] of hits) {
+    out.push(String(rank).padStart(6) + "  " + d + "  ->  [" + reason + "] " + off);
+  }
+  document.title = "sweep: " + hits.length + " hit su " + domains.length;
+  document.body.textContent = out.join("\n");
+  console.log(out.join("\n"));
+})();
+</script>
+</body>
+</html>

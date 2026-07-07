@@ -10,6 +10,8 @@ const listEl = document.getElementById("domain-list");
 const countEl = document.getElementById("count");
 const inputEl = document.getElementById("domain-input");
 const msgEl = document.getElementById("msg");
+const filterEl = document.getElementById("filter");
+const DEFAULTS = new Set(DEFAULT_DOMAINS);   // per il distintivo "tuo"
 
 let msgTimer = null;
 function showMsg(text, isError = false) {
@@ -46,17 +48,35 @@ function render(domains) {
   countEl.textContent = domains.length;
   for (const d of [...domains].sort()) {
     const li = document.createElement("li");
+    li.dataset.d = d;
     const span = document.createElement("span");
     span.textContent = d;
+    li.appendChild(span);
+    if (!DEFAULTS.has(d)) {         // aggiunto dall'utente: distintivo "tuo"
+      const tag = document.createElement("em");
+      tag.className = "tag-yours";
+      tag.textContent = t("tagYours");
+      li.appendChild(tag);
+    }
     const btn = document.createElement("button");
     btn.className = "remove";
     btn.title = t("remove");
     btn.textContent = "×";
     btn.addEventListener("click", () => removeDomain(d));
-    li.append(span, btn);
+    li.appendChild(btn);
     listEl.appendChild(li);
   }
+  applyFilter();
 }
+
+/* Filtro istantaneo sulla lista (185+ voci di serie: serve). */
+function applyFilter() {
+  const q = filterEl.value.trim().toLowerCase();
+  for (const li of listEl.children) {
+    li.hidden = q !== "" && !li.dataset.d.includes(q);
+  }
+}
+filterEl.addEventListener("input", applyFilter);
 
 async function addDomain(raw) {
   const domain = cleanDomain(raw);
@@ -123,6 +143,11 @@ document.getElementById("add-current").addEventListener("click", async () => {
     addDomain(new URL(tab.url).hostname);
   } catch (e) { showMsg(t("msgBadPage"), true); }
 });
+
+/* Ingranaggio -> pagina impostazioni. */
+const optionsBtn = document.getElementById("options");
+optionsBtn.title = t("optionsTitle");
+optionsBtn.addEventListener("click", () => browser.runtime.openOptionsPage());
 
 /* Avvio */
 getDomains().then(render);
