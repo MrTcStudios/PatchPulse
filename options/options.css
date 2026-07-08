@@ -99,3 +99,8 @@ header .tagline { font-size: 12px; color: var(--muted); }
 }
 
 .msg { min-height: 16px; font-size: 12px; margin-top: 8px; color: #7ee08a; }
+
+/* L'attributo `hidden` deve vincere SEMPRE, anche sugli elementi che hanno
+   un display proprio (flex/block): senza questa regola una riga nascosta via
+   JS resta visibile ma vuota (bug v1.6.0 sulla riga "indirizzo reale"). */
+[hidden] { display: none !important; }

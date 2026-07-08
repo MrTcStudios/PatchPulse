@@ -129,6 +129,10 @@ window.makePageStub = function (opts) {
       el.addEventListener("load", () => { clearTimeout(t); resolve("load"); }, { once: true });
     });
   }
+  /* Visibilita' REALE (computed style), non la proprieta' .hidden: un display
+     nel CSS puo' sovrascrivere l'attributo `hidden` (bug v1.6.0) e in quel
+     caso la proprieta' direbbe "nascosto" con l'elemento visibile e vuoto. */
+  const isHidden = (el) => el.ownerDocument.defaultView.getComputedStyle(el).display === "none";
 
   try {
     /* ═════════ R. RISVEGLIO EVENT PAGE ═════════
@@ -685,8 +689,8 @@ window.makePageStub = function (opts) {
        "warning: lettere ingannevoli evidenziate ('rn' marcato, testo completo intatto)");
     ok(d.getElementById("version").textContent.includes("9.9.9-test"), "warning: versione estensione mostrata");
     ok(d.activeElement && d.activeElement.id === "back", "warning: focus iniziale su 'Torna indietro' (Invio = scelta sicura)");
-    ok(d.getElementById("puny-row").hidden, "warning: riga punycode nascosta per domini ASCII");
-    ok(d.getElementById("demo-note").hidden, "warning: nota demo nascosta in modalita' normale");
+    ok(isHidden(d.getElementById("puny-row")), "warning: riga punycode DAVVERO nascosta (computed) per domini ASCII");
+    ok(isHidden(d.getElementById("demo-note")), "warning: nota demo DAVVERO nascosta (computed) in modalita' normale");
     const rl = d.getElementById("report");
     ok(rl.href.startsWith("mailto:support@patchpulse.org") && rl.href.includes("rnicrosoft.com"),
        "warning: link segnalazione falso allarme (mailto precompilato col dominio)");
@@ -739,16 +743,26 @@ window.makePageStub = function (opts) {
     const uniForm = idnToUnicode("xn--pypal-rqa.com");
     ok(uniForm !== "xn--pypal-rqa.com" && w5.contentDocument.getElementById("suspicious").textContent === uniForm,
        "warning IDN: mostra la forma leggibile (" + uniForm + ")");
-    ok(!w5.contentDocument.getElementById("puny-row").hidden
+    ok(!isHidden(w5.contentDocument.getElementById("puny-row"))
        && w5.contentDocument.getElementById("puny").textContent === "xn--pypal-rqa.com",
-       "warning IDN: riga 'indirizzo reale' col punycode");
+       "warning IDN: riga 'indirizzo reale' col punycode, visibile davvero");
     w5.remove();
+
+    /* script misti: nessun ufficiale di riferimento -> la riga "Assomiglia a"
+       deve sparire DAVVERO (il bug CSS v1.6.0 la lasciava visibile e vuota) */
+    const qsMix = "?suspicious=" + encodeURIComponent("pаypаl.com") + "&official=&reason=scriptmisti&target=" + encodeURIComponent(target);
+    let { f: w7 } = await loadWarning(qsMix, { lang: "en-US", storage: {} });
+    ok(isHidden(w7.contentDocument.getElementById("official-row")),
+       "warning script-misti: riga 'assomiglia a' DAVVERO nascosta (computed)");
+    ok(w7.contentDocument.getElementById("suspicious").textContent.length > 3,
+       "warning script-misti: dominio visitato mostrato");
+    w7.remove();
 
     /* v1.6: modalita' demo (aperta dall'onboarding): nessuna azione possibile */
     let { f: w6, logs: l6 } = await loadWarning("?demo=1&suspicious=rnicrosoft.com&official=microsoft.com&reason=typo", { lang: "en-US", storage: {} });
-    ok(!w6.contentDocument.getElementById("demo-note").hidden, "warning demo: nota dimostrativa visibile");
-    ok(w6.contentDocument.getElementById("trust").hidden && w6.contentDocument.getElementById("proceed").hidden,
-       "warning demo: 'mi fido' e 'vai comunque' nascosti");
+    ok(!isHidden(w6.contentDocument.getElementById("demo-note")), "warning demo: nota dimostrativa visibile");
+    ok(isHidden(w6.contentDocument.getElementById("trust")) && isHidden(w6.contentDocument.getElementById("proceed")),
+       "warning demo: 'mi fido' e 'vai comunque' DAVVERO nascosti (computed)");
     ok(l6.messages.length === 0, "warning demo: nessun messaggio al background");
     w6.remove();
 
@@ -842,9 +856,9 @@ window.makePageStub = function (opts) {
     d.getElementById("filter").value = "esempio";
     d.getElementById("filter").dispatchEvent(new p1.contentWindow.Event("input"));
     await sleep(50);
-    const visibleLis = [...d.querySelectorAll("#domain-list li")].filter(li => !li.hidden);
+    const visibleLis = [...d.querySelectorAll("#domain-list li")].filter(li => !isHidden(li));
     ok(visibleLis.length === 1 && visibleLis[0].dataset.d === "esempio.com",
-       "popup: filtro mostra solo i domini corrispondenti");
+       "popup: filtro nasconde DAVVERO (computed) i domini non corrispondenti");
     d.getElementById("filter").value = "";
     d.getElementById("filter").dispatchEvent(new p1.contentWindow.Event("input"));
 

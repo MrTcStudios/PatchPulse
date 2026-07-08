@@ -144,3 +144,8 @@ h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 
 .btn-copy:hover { color: var(--text); border-color: var(--muted); }
 
 .version { margin-top: 10px; text-align: center; font-size: 11px; color: #555; }
+
+/* L'attributo `hidden` deve vincere SEMPRE, anche sugli elementi che hanno
+   un display proprio (flex/block): senza questa regola una riga nascosta via
+   JS resta visibile ma vuota (bug v1.6.0 sulla riga "indirizzo reale"). */
+[hidden] { display: none !important; }

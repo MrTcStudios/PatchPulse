@@ -187,3 +187,8 @@ footer::before {
   line-height: 1;
 }
 .gear:hover { color: var(--text); }
+
+/* L'attributo `hidden` deve vincere SEMPRE, anche sugli elementi che hanno
+   un display proprio (flex/block): senza questa regola una riga nascosta via
+   JS resta visibile ma vuota (bug v1.6.0 sulla riga "indirizzo reale"). */
+[hidden] { display: none !important; }

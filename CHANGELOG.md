@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6.1 — 2026-07-08
+- Fix: rows hidden via the `hidden` attribute could remain visible as empty boxes ("real address" on every warning, "looks like" on mixed-script warnings) and the new popup filter did not actually hide non-matching entries — page CSS `display` rules were overriding the attribute. A global `[hidden] { display: none !important; }` rule now wins on every page, and the test suite checks computed visibility instead of the DOM property.
+
 ## 1.6.0 — 2026-07-08
 - **Settings page** (`options_ui`): pause protection, personal **trusted sites** list, disable/clear the locally stored threat history and counter, restore the default protected list (two-step confirm).
 - **"I trust this site"** on the warning now adds to the trusted list — the site simply won't be flagged again — instead of granting it brand protections in the protected list.
